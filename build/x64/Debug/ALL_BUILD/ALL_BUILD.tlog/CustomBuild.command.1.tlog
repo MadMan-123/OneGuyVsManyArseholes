@@ -1,0 +1,10 @@
+^C:\DEV\ONEGUYVSMANYARSEHOLES\CMAKELISTS.TXT
+setlocal
+"C:\Program Files\CMake\bin\cmake.exe" -SC:/Dev/OneGuyVsManyArseholes -BC:/Dev/OneGuyVsManyArseholes/build --check-stamp-file C:/Dev/OneGuyVsManyArseholes/build/CMakeFiles/generate.stamp
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd

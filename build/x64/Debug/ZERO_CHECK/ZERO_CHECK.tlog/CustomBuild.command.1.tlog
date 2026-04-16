@@ -1,0 +1,10 @@
+^C:\DEV\ONEGUYVSMANYARSEHOLES\BUILD\CMAKEFILES\2FAC8E5912E94D81D1F562762C19EECC\GENERATE.STAMP.RULE
+setlocal
+"C:\Program Files\CMake\bin\cmake.exe" -SC:/Dev/OneGuyVsManyArseholes -BC:/Dev/OneGuyVsManyArseholes/build --check-stamp-list CMakeFiles/generate.stamp.list --vs-solution-file C:/Dev/OneGuyVsManyArseholes/build/Game.sln
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd
