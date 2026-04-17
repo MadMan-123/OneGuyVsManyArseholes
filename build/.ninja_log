@@ -1,0 +1,9 @@
+# ninja log v7
+73	415	7980608074887595	C:/Users/tomr2/Documents/GitHub/OneGuyVsManyArseholes/build/CMakeFiles/cmake.verify_globs	a913c4888ebbc32f
+443	3614	7980608078562971	CMakeFiles/game.dir/src/Bullet.c.obj	bb0a59e389612fa
+497	3673	7980608079094362	CMakeFiles/game.dir/src/Player.c.obj	687608347952d425
+650	5576	7980608080624900	CMakeFiles/game_standalone.dir/src/main.cpp.obj	e8659549a231873b
+568	5629	7980608079856659	CMakeFiles/game.dir/src/game.cpp.obj	38167e9e2aea6d24
+5632	12088	7980608155041224	C:/Users/tomr2/Documents/GitHub/OneGuyVsManyArseholes/bin/libgame.dll	d61927ede4e196aa
+5632	12088	7980608155041224	C:/Users/tomr2/Documents/GitHub/OneGuyVsManyArseholes/bin/libgame.dll.a	d61927ede4e196aa
+12092	14331	7980608195031104	C:/Users/tomr2/Documents/GitHub/OneGuyVsManyArseholes/bin/OneGuyVsManyArseholes.exe	cf5a546bd5b9bddc

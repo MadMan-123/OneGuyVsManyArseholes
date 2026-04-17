@@ -1,3 +1,4 @@
+#define DRUID_SYSTEM_EXPORT
 #include "Player.h"
 #include "Bullet.h"
 #include <stdlib.h>
