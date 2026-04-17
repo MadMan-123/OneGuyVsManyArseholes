@@ -4,40 +4,7 @@
 #define BULLET_LIFETIME 3.0f
 #define BULLET_RADIUS   0.05f
 #define BULLET_MASS     0.01f
-#define MAX_PENDING_BULLET_SPAWNS 256
-
-// Field order must match the indices used in spawn/update/render.
-DSAPI FieldInfo Bullet_fields[] = {
-    { "Alive",           sizeof(b8),   FIELD_TEMP_COLD },
-    { "PositionX",       sizeof(f32),  FIELD_TEMP_HOT },
-    { "PositionY",       sizeof(f32),  FIELD_TEMP_HOT },
-    { "PositionZ",       sizeof(f32),  FIELD_TEMP_HOT },
-    { "Rotation",        sizeof(Vec4), FIELD_TEMP_HOT },
-    { "Scale",           sizeof(Vec3), FIELD_TEMP_HOT },
-    { "LinearVelocityX", sizeof(f32),  FIELD_TEMP_HOT },
-    { "LinearVelocityY", sizeof(f32),  FIELD_TEMP_HOT },
-    { "LinearVelocityZ", sizeof(f32),  FIELD_TEMP_HOT },
-    { "ForceX",          sizeof(f32),  FIELD_TEMP_HOT },
-    { "ForceY",          sizeof(f32),  FIELD_TEMP_HOT },
-    { "ForceZ",          sizeof(f32),  FIELD_TEMP_HOT },
-    { "PhysicsBodyType", sizeof(u32),  FIELD_TEMP_HOT },
-    { "Mass",            sizeof(f32),  FIELD_TEMP_HOT },
-    { "InvMass",         sizeof(f32),  FIELD_TEMP_HOT },
-    { "Restitution",     sizeof(f32),  FIELD_TEMP_HOT },
-    { "LinearDamping",   sizeof(f32),  FIELD_TEMP_HOT },
-    { "SphereRadius",    sizeof(f32),  FIELD_TEMP_HOT },
-    { "ColliderHalfX",   sizeof(f32),  FIELD_TEMP_HOT },
-    { "ColliderHalfY",   sizeof(f32),  FIELD_TEMP_HOT },
-    { "ColliderHalfZ",   sizeof(f32),  FIELD_TEMP_HOT },
-    { "Lifetime",        sizeof(f32),  FIELD_TEMP_HOT },
-    { "ModelID",         sizeof(u32),  FIELD_TEMP_COLD }
-};
-
-DSAPI StructLayout Bullet_layout = {
-    "Bullet",
-    Bullet_fields,
-    sizeof(Bullet_fields) / sizeof(FieldInfo)
-};
+DEFINE_ARCHETYPE(Bullet, BULLET_FIELDS)
 
 // DRUID_FLAGS 0x0C
 // isBuffered
@@ -47,110 +14,111 @@ static u32 s_ibSlot = (u32)-1;
 static Archetype *s_arch = NULL;
 static u32 s_sphereModelID = (u32)-1;
 
-typedef struct
-{
-    Vec3 position;
-    Vec3 direction;
-    f32 speed;
-} PendingBulletSpawn;
+//=============================================================================
+// Helpers
 
-static PendingBulletSpawn s_pendingSpawns[MAX_PENDING_BULLET_SPAWNS];
-static u32 s_pendingSpawnCount = 0;
+static b8 spawnBufferedEntity(Archetype *arch, u32 *outChunkIdx, u32 *outLocalIdx,
+                              void ***outFields, u32 *outPoolIdx)
+{
+    if (!arch) return false;
+
+    u32 poolIdx = archetypePoolSpawn(arch);
+    if (poolIdx == (u32)-1)
+        return false;
+
+    u32 chunkIdx = poolIdx / arch->chunkCapacity;
+    void **fields = getArchetypeFields(arch, chunkIdx);
+    if (!fields)
+    {
+        archetypePoolDespawn(arch, poolIdx);
+        return false;
+    }
+
+    if (outChunkIdx) *outChunkIdx = chunkIdx;
+    if (outLocalIdx) *outLocalIdx = poolIdx % arch->chunkCapacity;
+    if (outFields)   *outFields   = fields;
+    if (outPoolIdx)  *outPoolIdx  = poolIdx;
+    return true;
+}
 
 static void spawnBulletInArch(Archetype *arch, Vec3 position, Vec3 direction, f32 speed)
 {
-    if (!arch)
-        return;
+    if (!arch) return;
 
+    // lazy model lookup
     if (s_sphereModelID == (u32)-1 && resources)
     {
         Model *sphere = resGetModelByName("Sphere");
         if (sphere)
             s_sphereModelID = (u32)(sphere - resources->modelBuffer);
+        else if (resources->modelUsed > 0)
+            s_sphereModelID = 0;
     }
 
-    u32 idx = archetypePoolSpawn(arch);
-    if (idx == (u32)-1)
+    u32 chunkIdx = 0;
+    u32 i = 0;
+    void **fields = NULL;
+    u32 poolIdx = 0;
+    if (!spawnBufferedEntity(arch, &chunkIdx, &i, &fields, &poolIdx))
     {
-        ERROR("bulletSpawn: archetypePoolSpawn failed");
+        ERROR("bulletSpawn: archetypePoolSpawn/getArchetypeFields failed");
         return;
     }
 
-    if (arch->chunkCapacity == 0)
-    {
-        ERROR("bulletSpawn: invalid chunk capacity");
-        return;
-    }
-
-    u32 chunkIdx = idx / arch->chunkCapacity;
-    u32 localIdx = idx % arch->chunkCapacity;
-
-    if (chunkIdx >= arch->arenaCount || localIdx >= arch->arena[chunkIdx].count)
-    {
-        ERROR("bulletSpawn: failed to map idx=%u to valid chunk/local", idx);
-        return;
-    }
-
-    void **fields = getArchetypeFields(arch, chunkIdx);
-    if (!fields)
-    {
-        ERROR("bulletSpawn: getArchetypeFields failed for chunk %u", chunkIdx);
-        return;
-    }
-
-    b8   *alive    = (b8  *)fields[0];
-    f32  *posX     = (f32 *)fields[1];
-    f32  *posY     = (f32 *)fields[2];
-    f32  *posZ     = (f32 *)fields[3];
-    Vec4 *rot      = (Vec4 *)fields[4];
-    Vec3 *scl      = (Vec3 *)fields[5];
-    f32  *velX     = (f32 *)fields[6];
-    f32  *velY     = (f32 *)fields[7];
-    f32  *velZ     = (f32 *)fields[8];
-    f32  *forceX   = (f32 *)fields[9];
-    f32  *forceY   = (f32 *)fields[10];
-    f32  *forceZ   = (f32 *)fields[11];
-    u32  *bodyType = (u32 *)fields[12];
-    f32  *mass     = (f32 *)fields[13];
-    f32  *invMass  = (f32 *)fields[14];
-    f32  *restit   = (f32 *)fields[15];
-    f32  *damping  = (f32 *)fields[16];
-    f32  *radius   = (f32 *)fields[17];
-    f32  *halfX    = (f32 *)fields[18];
-    f32  *halfY    = (f32 *)fields[19];
-    f32  *halfZ    = (f32 *)fields[20];
-    f32  *lifetime = (f32 *)fields[21];
-    u32  *modelID  = (u32 *)fields[22];
+    f32  *posX    = (f32  *)fields[BF_POS_X];
+    f32  *posY    = (f32  *)fields[BF_POS_Y];
+    f32  *posZ    = (f32  *)fields[BF_POS_Z];
+    Vec4 *rot     = (Vec4 *)fields[BF_ROT];
+    Vec3 *scl     = (Vec3 *)fields[BF_SCALE];
+    f32  *velX    = (f32  *)fields[BF_VEL_X];
+    f32  *velY    = (f32  *)fields[BF_VEL_Y];
+    f32  *velZ    = (f32  *)fields[BF_VEL_Z];
+    f32  *forceX  = (f32  *)fields[BF_FORCE_X];
+    f32  *forceY  = (f32  *)fields[BF_FORCE_Y];
+    f32  *forceZ  = (f32  *)fields[BF_FORCE_Z];
+    u32  *bodyType = (u32 *)fields[BF_BODY_TYPE];
+    f32  *mass    = (f32  *)fields[BF_MASS];
+    f32  *restit  = (f32  *)fields[BF_RESTITUTION];
+    f32  *damping = (f32  *)fields[BF_DAMPING];
+    f32  *radius  = (f32  *)fields[BF_SPHERE_R];
+    f32  *halfX   = (f32  *)fields[BF_HALF_X];
+    f32  *halfY   = (f32  *)fields[BF_HALF_Y];
+    f32  *halfZ   = (f32  *)fields[BF_HALF_Z];
+    f32  *lifetime = (f32 *)fields[BF_LIFETIME];
+    u32  *modelID = (u32  *)fields[BF_MODEL_ID];
 
     Vec3 dir = v3Norm(direction);
 
-    alive[localIdx] = true;
-    posX[localIdx] = position.x;
-    posY[localIdx] = position.y;
-    posZ[localIdx] = position.z;
-    rot[localIdx] = (Vec4){0.0f, 0.0f, 0.0f, 1.0f};
-    scl[localIdx] = (Vec3){BULLET_RADIUS * 2.0f, BULLET_RADIUS * 2.0f, BULLET_RADIUS * 2.0f};
+    // alive is already set by the buffered spawn helper
+    posX[i] = position.x;
+    posY[i] = position.y;
+    posZ[i] = position.z;
+    rot[i]  = (Vec4){0.0f, 0.0f, 0.0f, 1.0f};
+    scl[i]  = (Vec3){BULLET_RADIUS * 2.0f, BULLET_RADIUS * 2.0f, BULLET_RADIUS * 2.0f};
 
-    velX[localIdx] = dir.x * speed;
-    velY[localIdx] = dir.y * speed;
-    velZ[localIdx] = dir.z * speed;
-    forceX[localIdx] = 0.0f;
-    forceY[localIdx] = 0.0f;
-    forceZ[localIdx] = 0.0f;
+    velX[i]   = dir.x * speed;
+    velY[i]   = dir.y * speed;
+    velZ[i]   = dir.z * speed;
+    forceX[i] = 0.0f;
+    forceY[i] = 0.0f;
+    forceZ[i] = 0.0f;
 
-    bodyType[localIdx] = PHYS_BODY_DYNAMIC;
-    mass[localIdx] = BULLET_MASS;
-    invMass[localIdx] = (BULLET_MASS > 0.0f) ? (1.0f / BULLET_MASS) : 0.0f;
-    restit[localIdx] = 0.0f;
-    damping[localIdx] = 0.0f;
-    radius[localIdx] = BULLET_RADIUS;
-    halfX[localIdx] = BULLET_RADIUS;
-    halfY[localIdx] = BULLET_RADIUS;
-    halfZ[localIdx] = BULLET_RADIUS;
+    bodyType[i] = PHYS_BODY_DYNAMIC;
+    mass[i]     = BULLET_MASS;
+    // invMass is auto-computed by physics on first step
+    restit[i]  = 0.0f;
+    damping[i] = 0.0f;
+    radius[i]  = BULLET_RADIUS;
+    halfX[i]   = BULLET_RADIUS;
+    halfY[i]   = BULLET_RADIUS;
+    halfZ[i]   = BULLET_RADIUS;
 
-    lifetime[localIdx] = 0.0f;
-    modelID[localIdx] = s_sphereModelID;
+    lifetime[i] = 0.0f;
+    modelID[i]  = s_sphereModelID;
 }
+
+//=============================================================================
+// Lifecycle
 
 Archetype *bulletGetArchetype(void)
 {
@@ -167,13 +135,14 @@ void bulletInit(Archetype *arch)
     {
         Model *sphere = resGetModelByName("Sphere");
         if (sphere)
-        {
             s_sphereModelID = (u32)(sphere - resources->modelBuffer);
+        else if (resources->modelUsed > 0)
+        {
+            s_sphereModelID = 0;
+            WARN("bulletInit: Sphere model not found, using model 0 as fallback");
         }
         else
-        {
-            ERROR("bulletInit: Sphere model not found!");
-        }
+            ERROR("bulletInit: Sphere model not found and no models available");
     }
     else
     {
@@ -183,19 +152,7 @@ void bulletInit(Archetype *arch)
 
 void bulletSpawn(Vec3 position, Vec3 direction, f32 speed)
 {
-    if (!s_arch)
-    {
-        if (s_pendingSpawnCount < MAX_PENDING_BULLET_SPAWNS)
-        {
-            s_pendingSpawns[s_pendingSpawnCount++] = (PendingBulletSpawn){position, direction, speed};
-        }
-        else
-        {
-            ERROR("bulletSpawn: pending spawn queue full");
-        }
-        return;
-    }
-
+    if (!s_arch) return;  // arch not ready yet — drop the shot (imperceptible on frame 1)
     spawnBulletInArch(s_arch, position, direction, speed);
 }
 
@@ -203,36 +160,21 @@ void bulletUpdate(Archetype *arch, f32 dt)
 {
     s_arch = arch;
 
-    if (s_pendingSpawnCount > 0)
+    for (u32 ch = 0; ch < arch->activeChunkCount; ch++)
     {
-        for (u32 i = 0; i < s_pendingSpawnCount; i++)
-        {
-            spawnBulletInArch(arch,
-                              s_pendingSpawns[i].position,
-                              s_pendingSpawns[i].direction,
-                              s_pendingSpawns[i].speed);
-        }
-        s_pendingSpawnCount = 0;
-    }
-
-    for (u32 _ch = 0; _ch < arch->activeChunkCount; _ch++)
-    {
-        void **fields = getArchetypeFields(arch, _ch);
+        void **fields = getArchetypeFields(arch, ch);
         if (!fields) continue;
-        u32 count = arch->arena[_ch].count;
+        u32 count = arch->arena[ch].count;
 
-        b8  *alive    = (b8 *)fields[0];
-        f32 *lifetime = (f32 *)fields[21];
+        b8  *alive    = (b8  *)fields[BF_ALIVE];
+        f32 *lifetime = (f32 *)fields[BF_LIFETIME];
 
         for (u32 i = 0; i < count; i++)
         {
             if (!alive[i]) continue;
-
             lifetime[i] += dt;
             if (lifetime[i] >= BULLET_LIFETIME)
-            {
-                archetypePoolDespawn(arch, (_ch * arch->chunkCapacity) + i);
-            }
+                archetypePoolDespawn(arch, (ch * arch->chunkCapacity) + i);
         }
     }
 }
@@ -241,38 +183,35 @@ void bulletDestroy(void)
 {
     if (s_ibSlot != (u32)-1) { rendererReleaseInstanceBuffer(renderer, s_ibSlot); s_ibSlot = (u32)-1; }
     s_arch = NULL;
-    s_pendingSpawnCount = 0;
 }
 
 void bulletRender(Archetype *arch, Renderer *r)
 {
     if (!arch || !r || !resources) return;
 
-    for (u32 _ch = 0; _ch < arch->activeChunkCount; _ch++)
+    for (u32 ch = 0; ch < arch->activeChunkCount; ch++)
     {
-        void **fields = getArchetypeFields(arch, _ch);
+        void **fields = getArchetypeFields(arch, ch);
         if (!fields) continue;
-        
-        u32 count = arch->arena[_ch].count;
-        b8  *alive    = (b8 *)fields[0];
-        f32 *posX     = (f32 *)fields[1];
-        f32 *posY     = (f32 *)fields[2];
-        f32 *posZ     = (f32 *)fields[3];
-        Vec4 *rot     = (Vec4 *)fields[4];
-        Vec3 *scl     = (Vec3 *)fields[5];
-        u32 *modelID  = (u32 *)fields[22];
+
+        u32   count   = arch->arena[ch].count;
+        b8   *alive   = (b8  *)fields[BF_ALIVE];
+        f32  *posX    = (f32 *)fields[BF_POS_X];
+        f32  *posY    = (f32 *)fields[BF_POS_Y];
+        f32  *posZ    = (f32 *)fields[BF_POS_Z];
+        Vec4 *rot     = (Vec4 *)fields[BF_ROT];
+        Vec3 *scl     = (Vec3 *)fields[BF_SCALE];
+        u32  *modelID = (u32 *)fields[BF_MODEL_ID];
 
         for (u32 i = 0; i < count; i++)
         {
             if (!alive[i]) continue;
-
             u32 mID = modelID[i];
             if (mID >= resources->modelUsed) continue;
 
             Model *model = &resources->modelBuffer[mID];
             Transform t = {{posX[i], posY[i], posZ[i]}, rot[i], scl[i]};
-            
-            u32 prevShader = r->defaultShader;
+
             for (u32 m = 0; m < model->meshCount; m++)
             {
                 u32 mi = model->meshIndices[m];
@@ -284,16 +223,16 @@ void bulletRender(Archetype *arch, Renderer *r)
     }
 }
 
-// Plugin init shim.
-static void bulletInitPlugin(void)
-{
-    // Standalone path calls bulletInit directly.
-}
+// standalone calls bulletInit directly
+static void bulletInitPlugin(void) {}
 
 void druidGetECSSystem_Bullet(ECSSystemPlugin *out)
 {
+    // game.cpp owns this archetype and calls bulletUpdate/bulletRender explicitly.
+    // Returning NULL here prevents the editor's ECS loop from double-invoking them
+    // and from stomping s_arch (which would redirect bulletSpawn to the wrong arch).
     out->init    = bulletInitPlugin;
-    out->update  = bulletUpdate;
-    out->render  = bulletRender;
+    out->update  = NULL;
+    out->render  = NULL;
     out->destroy = bulletDestroy;
 }

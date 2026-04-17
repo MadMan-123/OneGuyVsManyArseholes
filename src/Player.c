@@ -25,48 +25,14 @@
 
 #define RECOIL_RECOVERY_SPEED 2.0f
 
+// Temporary debug: draw movement basis axes at the player each frame.
+#define DEBUG_DRAW_MOVE_AXES 1
+
 static b8 s_wasEscDown = false;
 static b8 s_physicsInitialized = false;
 static b8 s_mouseCapturedOnStart = false;
 
-// Field order must match the indices used in playerUpdate.
-DSAPI FieldInfo Player_fields[] = {
-    { "PositionX", sizeof(f32), FIELD_TEMP_HOT },
-    { "PositionY", sizeof(f32), FIELD_TEMP_HOT },
-    { "PositionZ", sizeof(f32), FIELD_TEMP_HOT },
-    { "Rotation", sizeof(Vec4), FIELD_TEMP_HOT },
-    { "Scale", sizeof(Vec3), FIELD_TEMP_HOT },
-    { "LinearVelocityX", sizeof(f32), FIELD_TEMP_COLD },
-    { "LinearVelocityY", sizeof(f32), FIELD_TEMP_COLD },
-    { "LinearVelocityZ", sizeof(f32), FIELD_TEMP_COLD },
-    { "ForceX", sizeof(f32), FIELD_TEMP_COLD },
-    { "ForceY", sizeof(f32), FIELD_TEMP_COLD },
-    { "ForceZ", sizeof(f32), FIELD_TEMP_COLD },
-    { "PhysicsBodyType", sizeof(u32), FIELD_TEMP_COLD },
-    { "Mass", sizeof(f32), FIELD_TEMP_COLD },
-    { "InvMass", sizeof(f32), FIELD_TEMP_COLD },
-    { "Restitution", sizeof(f32), FIELD_TEMP_COLD },
-    { "LinearDamping", sizeof(f32), FIELD_TEMP_COLD },
-    { "SphereRadius", sizeof(f32), FIELD_TEMP_COLD },
-    { "ColliderHalfX", sizeof(f32), FIELD_TEMP_COLD },
-    { "ColliderHalfY", sizeof(f32), FIELD_TEMP_COLD },
-    { "ColliderHalfZ", sizeof(f32), FIELD_TEMP_COLD },
-    { "Yaw", sizeof(f32), FIELD_TEMP_COLD },
-    { "Pitch", sizeof(f32), FIELD_TEMP_COLD },
-    { "IsGrounded", sizeof(b8), FIELD_TEMP_COLD },
-    { "ModelID", sizeof(u32), FIELD_TEMP_COLD },
-    { "WeaponType", sizeof(u32), FIELD_TEMP_COLD },
-    { "FireCooldown", sizeof(f32), FIELD_TEMP_COLD },
-    { "CurrentSpread", sizeof(f32), FIELD_TEMP_COLD },
-    { "RecoilRecovery", sizeof(f32), FIELD_TEMP_COLD },
-    { "WasFireDown", sizeof(b8), FIELD_TEMP_COLD }
-};
-
-DSAPI StructLayout Player_layout = {
-    "Player",
-    Player_fields,
-    sizeof(Player_fields) / sizeof(FieldInfo)
-};
+DEFINE_ARCHETYPE(Player, PLAYER_FIELDS)
 
 // DRUID_FLAGS 0x05
 // isSingle
@@ -74,163 +40,112 @@ DSAPI StructLayout Player_layout = {
 
 static u32 s_ibSlot = (u32)-1;
 
-void playerInit(void)
+//=============================================================================
+// Helpers
+
+static void playerLook(f32 *Yaw, f32 *Pitch, f32 *RecoilR, Vec4 *Rot, f32 dt)
 {
-    s_ibSlot = rendererAcquireInstanceBuffer(renderer, 1024);
-}
-
-void playerUpdate(Archetype *arch, f32 dt)
-{
-    void **fields = getArchetypeFields(arch, 0);
-    if (!fields || arch->arena[0].count == 0) return;
-
-    f32  *PosX    = (f32 *)fields[0];
-    f32  *PosY    = (f32 *)fields[1];
-    f32  *PosZ    = (f32 *)fields[2];
-    Vec4 *Rot     = (Vec4 *)fields[3];
-    f32  *VelX    = (f32 *)fields[5];
-    f32  *VelY    = (f32 *)fields[6];
-    f32  *VelZ    = (f32 *)fields[7];
-    f32  *Yaw     = (f32 *)fields[20];
-    f32  *Pitch   = (f32 *)fields[21];
-    b8   *IsGnd   = (b8 *)fields[22];
-    u32  *Weapon  = (u32 *)fields[24];
-    f32  *FirCD   = (f32 *)fields[25];
-    f32  *Spread  = (f32 *)fields[26];
-    f32  *RecoilR = (f32 *)fields[27];
-    b8   *WasFire = (b8 *)fields[28];
-
-    // Hide local player mesh in first-person.
-    u32 *ModelID = (u32 *)fields[23];
-    ModelID[0] = (u32)-1;
-
-    // Ensure physics defaults once.
-    if (!s_physicsInitialized)
-    {
-        u32  *BodyType   = (u32 *)fields[11];
-        f32  *Mass       = (f32 *)fields[12];
-        f32  *InvMass    = (f32 *)fields[13];
-        f32  *Restit     = (f32 *)fields[14];
-        f32  *Damp       = (f32 *)fields[15];
-        f32  *ColHalfX   = (f32 *)fields[17];
-        f32  *ColHalfY   = (f32 *)fields[18];
-        f32  *ColHalfZ   = (f32 *)fields[19];
-
-        BodyType[0] = PHYS_BODY_DYNAMIC;
-        Mass[0]     = 80.0f;
-        InvMass[0]  = 1.0f / 80.0f;
-        Restit[0]   = 0.0f;
-        Damp[0]     = 0.1f;
-        ColHalfX[0] = 0.4f;
-        ColHalfY[0] = 0.9f;
-        ColHalfZ[0] = 0.4f;
-
-        s_physicsInitialized = true;
-        INFO("Player physics init: bt=%u mass=%.1f invMass=%.4f damp=%.2f half=(%.2f,%.2f,%.2f)",
-             BodyType[0], Mass[0], InvMass[0], Damp[0], ColHalfX[0], ColHalfY[0], ColHalfZ[0]);
-    }
-
-    // Capture mouse on first frame.
-    if (!s_mouseCapturedOnStart)
-    {
-        setMouseCaptured(true);
-        s_mouseCapturedOnStart = true;
-    }
-
-    // Escape toggles mouse capture.
-    b8 escDown = isKeyDown(KEY_ESCAPE);
-    if (escDown && !s_wasEscDown)
-        setMouseCaptured(!isMouseCaptured());
-    s_wasEscDown = escDown;
-
-    // Camera look input.
     Yaw[0]   += xLookAxis * CAM_ROTATE_SPEED * dt;
     Pitch[0] += yLookAxis * CAM_ROTATE_SPEED * dt;
     Pitch[0]  = clamp(Pitch[0], -radians(89.0f), radians(89.0f));
 
-    // Recoil recovery.
+    // bleed off accumulated recoil
     if (RecoilR[0] > 0.0f)
     {
         f32 recover = RECOIL_RECOVERY_SPEED * dt;
         if (recover > RecoilR[0]) recover = RecoilR[0];
-        Pitch[0]  -= recover;
+        Pitch[0]   -= recover;
         RecoilR[0] -= recover;
     }
 
-    // Build orientation from yaw/pitch.
     Vec4 yawQ   = quatFromAxisAngle(v3Up, Yaw[0]);
     Vec4 pitchQ = quatFromAxisAngle(v3Right, Pitch[0]);
     Rot[0] = quatNormalize(quatMul(yawQ, pitchQ));
+}
 
-    // Movement input.
-    Vec3 forward = quatRotateVec3(Rot[0], v3Forward);
-    Vec3 right   = quatRotateVec3(Rot[0], v3Right);
+static void playerMove(f32 *VelX, f32 *VelY, f32 *VelZ, b8 *IsGnd,
+                       Vec4 Rot, f32 posX, f32 posY, f32 posZ)
+{
+    Vec3 forward = quatRotateVec3(Rot, v3Forward);
+    Vec3 right   = quatRotateVec3(Rot, v3Right);
 
-    // Keep movement on XZ plane.
+    // Keep movement on the ground plane even if the view is pitched up/down.
     forward.y = 0.0f; forward = v3Norm(forward);
     right.y   = 0.0f; right   = v3Norm(right);
 
     f32 speed = MOVE_SPEED;
     if (isKeyDown(KEY_LSHIFT) || isButtonDown(0, BUTTON_LEFTSTICK)) speed *= SPRINT_MULTIPLIER;
 
-    Vec3 move = v3Add(v3Scale(right, -xInputAxis), v3Scale(forward, yInputAxis));
+    Vec3 move = v3Add(v3Scale(forward, yInputAxis), v3Scale(right, -xInputAxis));
     f32 len = v3Mag(move);
     if (len > 0.001f)
         move = v3Scale(move, speed / len);
     else
         move = (Vec3){0, 0, 0};
 
-    // Let physics keep vertical velocity.
+    // leave vertical velocity to physics
     VelX[0] = move.x;
     VelZ[0] = move.z;
 
-    // Ground check ray.
-    f32 halfH = 0.9f;
-    f32 skinDist = 0.15f;
+    // ground check
     IsGnd[0] = false;
     if (physicsWorld)
     {
         PhysRay ray;
-        ray.origin    = (Vec3){PosX[0], PosY[0], PosZ[0]};
-        ray.direction = (Vec3){0.0f, -1.0f, 0.0f};
-        ray.maxDistance = halfH + skinDist;
-        ray.layerMask  = 0xFFFFFFFF;
-        PhysRayHit hit = physRaycast(physicsWorld, ray);
-        if (hit.hit)
-            IsGnd[0] = true;
+        ray.origin      = (Vec3){posX, posY, posZ};
+        ray.direction   = (Vec3){0.0f, -1.0f, 0.0f};
+        ray.maxDistance = 0.9f + 0.15f;
+        ray.layerMask   = 0xFFFFFFFF;
+        PhysRayHit hit  = physRaycast(physicsWorld, ray);
+        if (hit.hit) IsGnd[0] = true;
     }
 
-    // Jump: use south-face button mapping (Cross/X) instead of east-face (Circle/B).
     if (IsGnd[0] && (isKeyDown(KEY_SPACE) || isButtonDown(0, BUTTON_CROSS)))
         VelY[0] = JUMP_FORCE;
+}
 
-    // Weapon switch.
-    if (isKeyDown(KEY_1) || isButtonDown(0, BUTTON_LEFTSHOULDER))  Weapon[0] = WEAPON_PISTOL;
-    if (isKeyDown(KEY_2) || isButtonDown(0, BUTTON_RIGHTSHOULDER)) Weapon[0] = WEAPON_AK47;
+static void drawMovementAxesDebug(Vec3 origin, Vec4 rot)
+{
+#if DEBUG_DRAW_MOVE_AXES
+    const f32 len = 1.5f;
+    const f32 head = 0.12f;
 
-    // Fire cooldown.
-    if (FirCD[0] > 0.0f)
-        FirCD[0] -= dt;
+    Vec3 forward = quatRotateVec3(rot, v3Forward);
+    Vec3 right   = quatRotateVec3(rot, v3Right);
+    forward.y = 0.0f;
+    right.y   = 0.0f;
+    forward = v3Norm(forward);
+    right   = v3Norm(right);
 
-    // Shooting.
+    // Right (red), Up (green), Forward (blue)
+    gizmoDrawArrow(origin, v3Add(origin, v3Scale(right, len)), head, GIZMO_RED);
+    gizmoDrawArrow(origin, v3Add(origin, v3Scale(v3Up, len * 0.75f)), head, GIZMO_GREEN);
+    gizmoDrawArrow(origin, v3Add(origin, v3Scale(forward, len)), head, GIZMO_BLUE);
+#else
+    (void)origin;
+    (void)rot;
+#endif
+}
+
+static void playerShoot(u32 *Weapon, f32 *FirCD, f32 *Spread, f32 *RecoilR,
+                        f32 *Pitch, b8 *WasFire, Vec4 *Rot,
+                        f32 posX, f32 posY, f32 posZ, f32 dt)
+{
+    if (FirCD[0] > 0.0f) FirCD[0] -= dt;
+
     Vec2 triggers = getJoystickAxis(0, JOYSTICK_TRIGGER_LEFT, JOYSTICK_TRIGGER_RIGHT);
-    // Include keyboard fallback and both left-button encodings for compatibility.
     b8 fireDown = isMouseDown(MOUSE_LEFT) || isMouseDown(MOUSE_LEFT + 1) ||
-                  isKeyDown(KEY_LCTRL) || isKeyDown(KEY_RCTRL) ||
+                  isKeyDown(KEY_LCTRL)    || isKeyDown(KEY_RCTRL) ||
                   (triggers.y < -0.5f);
 
-    b8 canFire = false;
-    if (Weapon[0] == WEAPON_PISTOL)
-        canFire = fireDown && !WasFire[0] && FirCD[0] <= 0.0f;
-    else
-        canFire = fireDown && FirCD[0] <= 0.0f;
+    b8 canFire = (Weapon[0] == WEAPON_PISTOL) ? (fireDown && !WasFire[0] && FirCD[0] <= 0.0f)
+                                              : (fireDown && FirCD[0] <= 0.0f);
 
     if (canFire)
     {
-        f32 bulletSpeed = (Weapon[0] == WEAPON_PISTOL) ? PISTOL_SPEED : AK_SPEED;
+        f32 bulletSpeed = (Weapon[0] == WEAPON_PISTOL) ? PISTOL_SPEED    : AK_SPEED;
         f32 cooldown    = (Weapon[0] == WEAPON_PISTOL) ? PISTOL_COOLDOWN : AK_COOLDOWN;
-        f32 recoilKick  = (Weapon[0] == WEAPON_PISTOL) ? PISTOL_RECOIL : AK_RECOIL;
-
+        f32 recoilKick  = (Weapon[0] == WEAPON_PISTOL) ? PISTOL_RECOIL   : AK_RECOIL;
 
         f32 spreadX = Spread[0] * ((f32)(rand() % 2001 - 1000) / 1000.0f);
         f32 spreadY = Spread[0] * ((f32)(rand() % 2001 - 1000) / 1000.0f);
@@ -240,13 +155,11 @@ void playerUpdate(Archetype *arch, f32 dt)
         dir.y += spreadY;
         dir = v3Norm(dir);
 
-        Vec3 eyePos = {PosX[0], PosY[0] + EYE_HEIGHT, PosZ[0]};
+        Vec3 eyePos   = {posX, posY + EYE_HEIGHT, posZ};
         Vec3 spawnPos = v3Add(eyePos, v3Scale(dir, 0.5f));
-
-
         bulletSpawn(spawnPos, dir, bulletSpeed);
 
-        FirCD[0] = cooldown;
+        FirCD[0]    = cooldown;
         RecoilR[0] += recoilKick;
         Pitch[0]   += recoilKick;
 
@@ -261,6 +174,7 @@ void playerUpdate(Archetype *arch, f32 dt)
         }
     }
 
+    // spread decays while trigger is up
     if (!fireDown && Spread[0] > 0.0f)
     {
         Spread[0] -= AK_SPREAD_DECAY * dt;
@@ -268,8 +182,91 @@ void playerUpdate(Archetype *arch, f32 dt)
     }
 
     WasFire[0] = fireDown;
+}
 
-    // Sync camera to eye position.
+//=============================================================================
+// Lifecycle
+
+void playerInit(void)
+{
+    s_ibSlot = rendererAcquireInstanceBuffer(renderer, 1024);
+}
+
+void playerUpdate(Archetype *arch, f32 dt)
+{
+    void **fields = getArchetypeFields(arch, 0);
+    if (!fields || arch->arena[0].count == 0) return;
+
+    f32  *PosX    = (f32 *)fields[PF_POS_X];
+    f32  *PosY    = (f32 *)fields[PF_POS_Y];
+    f32  *PosZ    = (f32 *)fields[PF_POS_Z];
+    Vec4 *Rot     = (Vec4 *)fields[PF_ROT];
+    f32  *VelX    = (f32 *)fields[PF_VEL_X];
+    f32  *VelY    = (f32 *)fields[PF_VEL_Y];
+    f32  *VelZ    = (f32 *)fields[PF_VEL_Z];
+    f32  *Yaw     = (f32 *)fields[PF_YAW];
+    f32  *Pitch   = (f32 *)fields[PF_PITCH];
+    b8   *IsGnd   = (b8  *)fields[PF_IS_GROUNDED];
+    u32  *Weapon  = (u32 *)fields[PF_WEAPON];
+    f32  *FirCD   = (f32 *)fields[PF_FIRE_CD];
+    f32  *Spread  = (f32 *)fields[PF_SPREAD];
+    f32  *RecoilR = (f32 *)fields[PF_RECOIL_R];
+    b8   *WasFire = (b8  *)fields[PF_WAS_FIRE];
+
+    // First-person view: hide runtime self mesh to avoid seeing clipped body
+    // parts while still allowing a separate placed scene model as a guide.
+    u32 *ModelID = (u32 *)fields[PF_MODEL_ID];
+    ModelID[0] = (u32)-1;
+
+    // one-time physics defaults
+    if (!s_physicsInitialized)
+    {
+        u32 *BodyType = (u32 *)fields[PF_BODY_TYPE];
+        f32 *Mass     = (f32 *)fields[PF_MASS];
+        f32 *Restit   = (f32 *)fields[PF_RESTITUTION];
+        f32 *Damp     = (f32 *)fields[PF_DAMPING];
+        f32 *ColHalfX = (f32 *)fields[PF_HALF_X];
+        f32 *ColHalfY = (f32 *)fields[PF_HALF_Y];
+        f32 *ColHalfZ = (f32 *)fields[PF_HALF_Z];
+
+        BodyType[0] = PHYS_BODY_DYNAMIC;
+        Mass[0]     = 80.0f;
+        Restit[0]   = 0.0f;
+        Damp[0]     = 0.1f;
+        ColHalfX[0] = 0.4f;
+        ColHalfY[0] = 0.9f;
+        ColHalfZ[0] = 0.4f;
+
+        s_physicsInitialized = true;
+        INFO("Player physics init: bt=%u mass=%.1f damp=%.2f half=(%.2f,%.2f,%.2f)",
+             BodyType[0], Mass[0], Damp[0], ColHalfX[0], ColHalfY[0], ColHalfZ[0]);
+    }
+
+    if (!s_mouseCapturedOnStart)
+    {
+        setMouseCaptured(true);
+        s_mouseCapturedOnStart = true;
+    }
+
+    // escape toggles mouse capture
+    b8 escDown = isKeyDown(KEY_ESCAPE);
+    if (escDown && !s_wasEscDown)
+        setMouseCaptured(!isMouseCaptured());
+    s_wasEscDown = escDown;
+
+    playerLook(Yaw, Pitch, RecoilR, Rot, dt);
+    playerMove(VelX, VelY, VelZ, IsGnd, Rot[0], PosX[0], PosY[0], PosZ[0]);
+
+    // weapon select
+    if (isKeyDown(KEY_1) || isButtonDown(0, BUTTON_LEFTSHOULDER))  Weapon[0] = WEAPON_PISTOL;
+    if (isKeyDown(KEY_2) || isButtonDown(0, BUTTON_RIGHTSHOULDER)) Weapon[0] = WEAPON_AK47;
+
+    playerShoot(Weapon, FirCD, Spread, RecoilR, Pitch, WasFire, Rot,
+                PosX[0], PosY[0], PosZ[0], dt);
+
+    drawMovementAxesDebug((Vec3){PosX[0], PosY[0] + 0.05f, PosZ[0]}, Rot[0]);
+
+    // sync camera to eye
     if (renderer)
     {
         Camera *cam = rendererGetCamera(renderer, renderer->activeCamera);
@@ -281,7 +278,13 @@ void playerUpdate(Archetype *arch, f32 dt)
     }
 }
 
-// Use default renderer by leaving out->render = NULL.
+void playerRender(Archetype *arch, Renderer *r)
+{
+    // Player is rendered via the game plugin's own archetype.
+    // This no-op prevents the editor falling back to rendererDefaultArchetypeRender
+    // on the scene-placed entity, which would show a duplicate without the game texture.
+    (void)arch; (void)r;
+}
 
 void playerDestroy(void)
 {
@@ -293,8 +296,12 @@ void playerDestroy(void)
 
 void druidGetECSSystem_Player(ECSSystemPlugin *out)
 {
+    // game.cpp owns this archetype and calls playerUpdate explicitly.
+    // update=NULL prevents the editor's ECS loop from double-invoking it (double bullets).
+    // render=playerRender (no-op) prevents the editor from falling back to
+    // rendererDefaultArchetypeRender on the scene entity (double player render).
     out->init    = playerInit;
-    out->update  = playerUpdate;
-    out->render  = NULL;
+    out->update  = NULL;
+    out->render  = playerRender;
     out->destroy = playerDestroy;
 }

@@ -21,33 +21,27 @@ static Archetype g_playerArch = {0};
 static Archetype g_bulletArch = {0};
 static b8        g_playerCreated = false;
 static b8        g_bulletCreated = false;
+static b8        g_playerPhysRegistered = false;
+static b8        g_bulletPhysRegistered = false;
 
 static FieldInfo g_floorFields[] = {
-    { "PositionX",       sizeof(f32),  FIELD_TEMP_HOT },
-    { "PositionY",       sizeof(f32),  FIELD_TEMP_HOT },
-    { "PositionZ",       sizeof(f32),  FIELD_TEMP_HOT },
-    { "Rotation",        sizeof(Vec4), FIELD_TEMP_HOT },
-    { "Scale",           sizeof(Vec3), FIELD_TEMP_HOT },
-    { "LinearVelocityX", sizeof(f32),  FIELD_TEMP_HOT },
-    { "LinearVelocityY", sizeof(f32),  FIELD_TEMP_HOT },
-    { "LinearVelocityZ", sizeof(f32),  FIELD_TEMP_HOT },
-    { "ForceX",          sizeof(f32),  FIELD_TEMP_HOT },
-    { "ForceY",          sizeof(f32),  FIELD_TEMP_HOT },
-    { "ForceZ",          sizeof(f32),  FIELD_TEMP_HOT },
-    { "PhysicsBodyType", sizeof(u32),  FIELD_TEMP_HOT },
-    { "Mass",            sizeof(f32),  FIELD_TEMP_HOT },
-    { "InvMass",         sizeof(f32),  FIELD_TEMP_HOT },
-    { "Restitution",     sizeof(f32),  FIELD_TEMP_HOT },
-    { "LinearDamping",   sizeof(f32),  FIELD_TEMP_HOT },
-    { "SphereRadius",    sizeof(f32),  FIELD_TEMP_HOT },
-    { "ColliderHalfX",   sizeof(f32),  FIELD_TEMP_HOT },
-    { "ColliderHalfY",   sizeof(f32),  FIELD_TEMP_HOT },
-    { "ColliderHalfZ",   sizeof(f32),  FIELD_TEMP_HOT },
-    { "ModelID",         sizeof(u32),  FIELD_TEMP_COLD }
+    { "PositionX",       sizeof(f32),  FIELD_TEMP_HOT  },
+    { "PositionY",       sizeof(f32),  FIELD_TEMP_HOT  },
+    { "PositionZ",       sizeof(f32),  FIELD_TEMP_HOT  },
+    { "Rotation",        sizeof(Vec4), FIELD_TEMP_HOT  },
+    { "Scale",           sizeof(Vec3), FIELD_TEMP_HOT  },
+    { "PhysicsBodyType", sizeof(u32),  FIELD_TEMP_HOT  },
+    { "Mass",            sizeof(f32),  FIELD_TEMP_HOT  },
+    { "InvMass",         sizeof(f32),  FIELD_TEMP_HOT  },
+    { "Restitution",     sizeof(f32),  FIELD_TEMP_HOT  },
+    { "ColliderHalfX",   sizeof(f32),  FIELD_TEMP_HOT  },
+    { "ColliderHalfY",   sizeof(f32),  FIELD_TEMP_HOT  },
+    { "ColliderHalfZ",   sizeof(f32),  FIELD_TEMP_HOT  },
+    { "ModelID",         sizeof(u32),  FIELD_TEMP_COLD },
 };
-static StructLayout g_floorLayout = { "Floor", g_floorFields, sizeof(g_floorFields) / sizeof(FieldInfo) };
-static Archetype g_floorArch = {0};
-static b8        g_floorCreated = false;
+static StructLayout g_floorLayout  = { "Floor", g_floorFields, sizeof(g_floorFields) / sizeof(FieldInfo) };
+static Archetype    g_floorArch    = {0};
+static b8           g_floorCreated = false;
 
 // Scene field pointers.
 static Vec3 *g_positions  = NULL;
@@ -185,37 +179,7 @@ static b8 loadStartupScene(void)
 
 // Archetype setup.
 
-static void setupFloor(void)
-{
-    g_floorArch.flags = 0;
-    FLAG_SET(g_floorArch.flags, ARCH_SINGLE);
-    FLAG_SET(g_floorArch.flags, ARCH_PHYSICS_BODY);
 
-    if (!createArchetype(&g_floorLayout, 1, &g_floorArch))
-    { ERROR("Failed to create Floor archetype"); return; }
-    g_floorCreated = true;
-
-    u64 entity = 0;
-    if (!createEntityInArchetype(&g_floorArch, &entity)) return;
-
-    void **fields = getArchetypeFields(&g_floorArch, 0);
-    if (!fields) return;
-
-    ((f32 *)fields[0])[0] = 0.0f;
-    ((f32 *)fields[1])[0] = 0.0f;
-    ((f32 *)fields[2])[0] = 0.0f;
-    Vec4 fRot = {0, 0, 0, 1}; ((Vec4 *)fields[3])[0] = fRot;
-    Vec3 fScl = {50.0f, 0.1f, 50.0f}; ((Vec3 *)fields[4])[0] = fScl;
-
-    ((u32 *)fields[11])[0] = 0;
-    ((f32 *)fields[12])[0] = 0.0f;
-    ((f32 *)fields[13])[0] = 0.0f;
-    ((f32 *)fields[14])[0] = 0.5f;
-    ((f32 *)fields[15])[0] = 0.0f;
-    ((f32 *)fields[17])[0] = 50.0f;
-    ((f32 *)fields[18])[0] = 0.05f;
-    ((f32 *)fields[19])[0] = 50.0f;
-}
 
 static void setupPlayer(void)
 {
@@ -233,20 +197,21 @@ static void setupPlayer(void)
     void **fields = getArchetypeFields(&g_playerArch, 0);
     if (fields)
     {
-        ((f32 *)fields[0])[0] = 0.0f;
-        ((f32 *)fields[1])[0] = 5.0f;
-        ((f32 *)fields[2])[0] = 0.0f;
-        Vec4 iRot = {0, 0, 0, 1}; ((Vec4 *)fields[3])[0] = iRot;
-        Vec3 pScl = {0.8f, 1.8f, 0.8f}; ((Vec3 *)fields[4])[0] = pScl;
+        Vec4 iRot = {0, 0, 0, 1};
+        Vec3 pScl = {0.8f, 1.8f, 0.8f};
+        ((f32 *)fields[PF_POS_X])[0]      = 0.0f;
+        ((f32 *)fields[PF_POS_Y])[0]      = 5.0f;
+        ((f32 *)fields[PF_POS_Z])[0]      = 0.0f;
+        ((Vec4 *)fields[PF_ROT])[0]        = iRot;
+        ((Vec3 *)fields[PF_SCALE])[0]      = pScl;
 
-        ((u32 *)fields[11])[0] = PHYS_BODY_DYNAMIC;
-        ((f32 *)fields[12])[0] = 80.0f;
-        ((f32 *)fields[13])[0] = 1.0f / 80.0f;
-        ((f32 *)fields[14])[0] = 0.0f;
-        ((f32 *)fields[15])[0] = 0.1f;
-        ((f32 *)fields[17])[0] = 0.4f;
-        ((f32 *)fields[18])[0] = 0.9f;
-        ((f32 *)fields[19])[0] = 0.4f;
+        ((u32 *)fields[PF_BODY_TYPE])[0]   = PHYS_BODY_DYNAMIC;
+        ((f32 *)fields[PF_MASS])[0]        = 80.0f;
+        ((f32 *)fields[PF_RESTITUTION])[0] = 0.0f;
+        ((f32 *)fields[PF_DAMPING])[0]     = 0.1f;
+        ((f32 *)fields[PF_HALF_X])[0]      = 0.4f;
+        ((f32 *)fields[PF_HALF_Y])[0]      = 0.9f;
+        ((f32 *)fields[PF_HALF_Z])[0]      = 0.4f;
     }
     playerInit();
 }
@@ -301,7 +266,6 @@ static void standaloneRenderGeometry(u32 shader)
         }
     }
 
-    if (g_floorCreated)  rendererDefaultArchetypeRender(&g_floorArch, renderer);
     if (g_playerCreated) rendererDefaultArchetypeRender(&g_playerArch, renderer);
     
     // Bullets are rendered manually here.
@@ -313,13 +277,13 @@ static void standaloneRenderGeometry(u32 shader)
             if (!fields) continue;
             u32 count = g_bulletArch.arena[_ch].count;
 
-            b8  *alive    = (b8 *)fields[0];
-            f32 *posX     = (f32 *)fields[1];
-            f32 *posY     = (f32 *)fields[2];
-            f32 *posZ     = (f32 *)fields[3];
-            Vec4 *rot     = (Vec4 *)fields[4];
-            Vec3 *scl     = (Vec3 *)fields[5];
-            u32 *modelID  = (u32 *)fields[22];
+            b8   *alive   = (b8  *)fields[BF_ALIVE];
+            f32  *posX    = (f32 *)fields[BF_POS_X];
+            f32  *posY    = (f32 *)fields[BF_POS_Y];
+            f32  *posZ    = (f32 *)fields[BF_POS_Z];
+            Vec4 *rot     = (Vec4 *)fields[BF_ROT];
+            Vec3 *scl     = (Vec3 *)fields[BF_SCALE];
+            u32  *modelID = (u32 *)fields[BF_MODEL_ID];
 
             for (u32 i = 0; i < count; i++)
             {
@@ -362,20 +326,6 @@ static void gameInit(const c8 *projectDir)
 
         loadStartupScene();
 
-        Vec3 gravity = {0.0f, -9.81f, 0.0f};
-        physInit(gravity, 1.0f / 60.0f);
-
-        setupFloor();
-        setupPlayer();
-        setupBullets();
-
-        if (physicsWorld)
-        {
-            if (g_floorCreated)  physRegisterArchetype(physicsWorld, &g_floorArch);
-            if (g_playerCreated) physRegisterArchetype(physicsWorld, &g_playerArch);
-            if (g_bulletCreated) physRegisterArchetype(physicsWorld, &g_bulletArch);
-        }
-
         g_gbufferShader  = createGraphicsProgram("./res/gbuffer.vert", "./res/gbuffer.frag");
         g_lightingShader = createGraphicsProgram("./res/deferred_lighting.vert", "./res/deferred_lighting.frag");
 
@@ -383,22 +333,70 @@ static void gameInit(const c8 *projectDir)
             rendererEnableDeferred(renderer, 1280, 720);
     }
 
+    // Gameplay archetypes are needed in both standalone and editor play mode.
+    // Physics world ownership differs by mode:
+    // - standalone: game plugin owns physics init/step
+    // - editor play: editor owns physics world lifetime
+    if (g_standaloneMode)
+    {
+        Vec3 gravity = {0.0f, -9.81f, 0.0f};
+        physInit(gravity, 1.0f / 60.0f);
+    }
+
+    setupPlayer();
+    setupBullets();
+
+    g_playerPhysRegistered = false;
+    g_bulletPhysRegistered = false;
+
+    if (physicsWorld)
+    {
+        if (g_playerCreated) physRegisterArchetype(physicsWorld, &g_playerArch);
+        if (g_bulletCreated) physRegisterArchetype(physicsWorld, &g_bulletArch);
+        g_playerPhysRegistered = g_playerCreated;
+        g_bulletPhysRegistered = g_bulletCreated;
+    }
+
     setMouseCaptured(true);
 }
 
 static void gameUpdate(f32 dt)
 {
-    if (!g_standaloneMode) return;
+    // In editor play mode the editor may initialize/reset physics after plugin init,
+    // so lazily (re)register gameplay archetypes when the world is available.
+    if (physicsWorld)
+    {
+        if (g_playerCreated && !g_playerPhysRegistered)
+        {
+            physRegisterArchetype(physicsWorld, &g_playerArch);
+            g_playerPhysRegistered = true;
+        }
+        if (g_bulletCreated && !g_bulletPhysRegistered)
+        {
+            physRegisterArchetype(physicsWorld, &g_bulletArch);
+            g_bulletPhysRegistered = true;
+        }
+    }
 
     if (g_playerCreated) playerUpdate(&g_playerArch, dt);
     if (g_bulletCreated) bulletUpdate(&g_bulletArch, dt);
-    if (physicsWorld)    physWorldStep(physicsWorld, dt);
+    if (g_standaloneMode && physicsWorld)
+        physWorldStep(physicsWorld, dt);
 }
 
 static void gameRender(f32 dt)
 {
     (void)dt;
-    if (!g_standaloneMode) return;
+    if (!g_standaloneMode)
+    {
+        // In editor play mode, draw gameplay-owned archetypes here.
+        if (renderer)
+        {
+            if (g_playerCreated) rendererDefaultArchetypeRender(&g_playerArch, renderer);
+            if (g_bulletCreated) bulletRender(&g_bulletArch, renderer);
+        }
+        return;
+    }
 
     if (renderer && renderer->useDeferredRendering && g_gbufferShader && g_lightingShader)
     {
@@ -417,12 +415,13 @@ static void gameDestroy(void)
 {
     setMouseCaptured(false);
 
-    if (g_standaloneMode)
+    if (g_playerCreated || g_bulletCreated || physicsWorld || g_standaloneMode)
     {
         if (g_playerCreated) { playerDestroy(); destroyArchetype(&g_playerArch); }
         if (g_bulletCreated) { bulletDestroy(); destroyArchetype(&g_bulletArch); }
-        if (g_floorCreated)  destroyArchetype(&g_floorArch);
         physShutdown();
+        g_playerPhysRegistered = false;
+        g_bulletPhysRegistered = false;
 
         if (g_sceneLoaded && g_scene.archetypes)
         {

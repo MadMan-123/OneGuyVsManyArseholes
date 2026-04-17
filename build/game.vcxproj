@@ -105,12 +105,12 @@
       <SupportJustMyCode></SupportJustMyCode>
       <TreatWChar_tAsBuiltInType></TreatWChar_tAsBuiltInType>
       <UseFullPaths>false</UseFullPaths>
-      <PreprocessorDefinitions>%(PreprocessorDefinitions);WIN32;_WINDOWS;GAME_EXPORT;CMAKE_INTDIR="Debug";game_EXPORTS</PreprocessorDefinitions>
+      <PreprocessorDefinitions>%(PreprocessorDefinitions);WIN32;_WINDOWS;GAME_EXPORT;DRUID_SYSTEM_EXPORT;CMAKE_INTDIR="Debug";game_EXPORTS</PreprocessorDefinitions>
       <ObjectFileName>$(IntDir)</ObjectFileName>
       <ScanSourceForModuleDependencies>false</ScanSourceForModuleDependencies>
     </ClCompile>
     <ResourceCompile>
-      <PreprocessorDefinitions>%(PreprocessorDefinitions);WIN32;_DEBUG;_WINDOWS;GAME_EXPORT;CMAKE_INTDIR=\"Debug\";game_EXPORTS</PreprocessorDefinitions>
+      <PreprocessorDefinitions>%(PreprocessorDefinitions);WIN32;_DEBUG;_WINDOWS;GAME_EXPORT;DRUID_SYSTEM_EXPORT;CMAKE_INTDIR=\"Debug\";game_EXPORTS</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>C:\Dev\OneGuyVsManyArseholes\deps\include;C:\Dev\OneGuyVsManyArseholes\deps\include\GL;C:\Dev\OneGuyVsManyArseholes\deps\include\SDL3;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ResourceCompile>
     <Midl>
@@ -176,14 +176,14 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
       <SupportJustMyCode></SupportJustMyCode>
       <TreatWChar_tAsBuiltInType></TreatWChar_tAsBuiltInType>
       <UseFullPaths>false</UseFullPaths>
-      <PreprocessorDefinitions>%(PreprocessorDefinitions);WIN32;_WINDOWS;NDEBUG;GAME_EXPORT;CMAKE_INTDIR="Release";game_EXPORTS</PreprocessorDefinitions>
+      <PreprocessorDefinitions>%(PreprocessorDefinitions);WIN32;_WINDOWS;NDEBUG;GAME_EXPORT;DRUID_SYSTEM_EXPORT;CMAKE_INTDIR="Release";game_EXPORTS</PreprocessorDefinitions>
       <ObjectFileName>$(IntDir)</ObjectFileName>
       <DebugInformationFormat>
       </DebugInformationFormat>
       <ScanSourceForModuleDependencies>false</ScanSourceForModuleDependencies>
     </ClCompile>
     <ResourceCompile>
-      <PreprocessorDefinitions>%(PreprocessorDefinitions);WIN32;_WINDOWS;NDEBUG;GAME_EXPORT;CMAKE_INTDIR=\"Release\";game_EXPORTS</PreprocessorDefinitions>
+      <PreprocessorDefinitions>%(PreprocessorDefinitions);WIN32;_WINDOWS;NDEBUG;GAME_EXPORT;DRUID_SYSTEM_EXPORT;CMAKE_INTDIR=\"Release\";game_EXPORTS</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>C:\Dev\OneGuyVsManyArseholes\deps\include;C:\Dev\OneGuyVsManyArseholes\deps\include\GL;C:\Dev\OneGuyVsManyArseholes\deps\include\SDL3;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ResourceCompile>
     <Midl>
@@ -249,14 +249,14 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
       <SupportJustMyCode></SupportJustMyCode>
       <TreatWChar_tAsBuiltInType></TreatWChar_tAsBuiltInType>
       <UseFullPaths>false</UseFullPaths>
-      <PreprocessorDefinitions>%(PreprocessorDefinitions);WIN32;_WINDOWS;NDEBUG;GAME_EXPORT;CMAKE_INTDIR="MinSizeRel";game_EXPORTS</PreprocessorDefinitions>
+      <PreprocessorDefinitions>%(PreprocessorDefinitions);WIN32;_WINDOWS;NDEBUG;GAME_EXPORT;DRUID_SYSTEM_EXPORT;CMAKE_INTDIR="MinSizeRel";game_EXPORTS</PreprocessorDefinitions>
       <ObjectFileName>$(IntDir)</ObjectFileName>
       <DebugInformationFormat>
       </DebugInformationFormat>
       <ScanSourceForModuleDependencies>false</ScanSourceForModuleDependencies>
     </ClCompile>
     <ResourceCompile>
-      <PreprocessorDefinitions>%(PreprocessorDefinitions);WIN32;_WINDOWS;NDEBUG;GAME_EXPORT;CMAKE_INTDIR=\"MinSizeRel\";game_EXPORTS</PreprocessorDefinitions>
+      <PreprocessorDefinitions>%(PreprocessorDefinitions);WIN32;_WINDOWS;NDEBUG;GAME_EXPORT;DRUID_SYSTEM_EXPORT;CMAKE_INTDIR=\"MinSizeRel\";game_EXPORTS</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>C:\Dev\OneGuyVsManyArseholes\deps\include;C:\Dev\OneGuyVsManyArseholes\deps\include\GL;C:\Dev\OneGuyVsManyArseholes\deps\include\SDL3;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ResourceCompile>
     <Midl>
@@ -323,12 +323,12 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
       <SupportJustMyCode></SupportJustMyCode>
       <TreatWChar_tAsBuiltInType></TreatWChar_tAsBuiltInType>
       <UseFullPaths>false</UseFullPaths>
-      <PreprocessorDefinitions>%(PreprocessorDefinitions);WIN32;_WINDOWS;NDEBUG;GAME_EXPORT;CMAKE_INTDIR="RelWithDebInfo";game_EXPORTS</PreprocessorDefinitions>
+      <PreprocessorDefinitions>%(PreprocessorDefinitions);WIN32;_WINDOWS;NDEBUG;GAME_EXPORT;DRUID_SYSTEM_EXPORT;CMAKE_INTDIR="RelWithDebInfo";game_EXPORTS</PreprocessorDefinitions>
       <ObjectFileName>$(IntDir)</ObjectFileName>
       <ScanSourceForModuleDependencies>false</ScanSourceForModuleDependencies>
     </ClCompile>
     <ResourceCompile>
-      <PreprocessorDefinitions>%(PreprocessorDefinitions);WIN32;_WINDOWS;NDEBUG;GAME_EXPORT;CMAKE_INTDIR=\"RelWithDebInfo\";game_EXPORTS</PreprocessorDefinitions>
+      <PreprocessorDefinitions>%(PreprocessorDefinitions);WIN32;_WINDOWS;NDEBUG;GAME_EXPORT;DRUID_SYSTEM_EXPORT;CMAKE_INTDIR=\"RelWithDebInfo\";game_EXPORTS</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>C:\Dev\OneGuyVsManyArseholes\deps\include;C:\Dev\OneGuyVsManyArseholes\deps\include\GL;C:\Dev\OneGuyVsManyArseholes\deps\include\SDL3;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ResourceCompile>
     <Midl>
