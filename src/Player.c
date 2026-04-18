@@ -13,16 +13,22 @@
 #define WEAPON_AK47    1
 
 #define PISTOL_COOLDOWN    0.15f
+#define PISTOL_AMMO        9.0f
+#define PISTOL_RELOAD      1.8f
 #define PISTOL_SPEED       120.0f
 #define PISTOL_SPREAD_MAX  0.01f
 #define PISTOL_RECOIL      0.03f
+#define PISTOL_RECOIL_FIRST 0.035f
 
 #define AK_COOLDOWN        0.1f
+#define AK_AMMO            30.0f
+#define AK_RELOAD          3.1f
 #define AK_SPEED           180.0f
 #define AK_SPREAD_MAX      0.06f
 #define AK_SPREAD_RATE     0.012f
 #define AK_SPREAD_DECAY    0.08f
 #define AK_RECOIL          0.05f
+#define AK_RECOIL_FIRST    0.10f
 
 #define RECOIL_RECOVERY_SPEED 2.0f
 
@@ -60,7 +66,11 @@ DSAPI FieldInfo Player_fields[] = {
     { "FireCooldown", sizeof(f32), FIELD_TEMP_COLD },
     { "CurrentSpread", sizeof(f32), FIELD_TEMP_COLD },
     { "RecoilRecovery", sizeof(f32), FIELD_TEMP_COLD },
-    { "WasFireDown", sizeof(b8), FIELD_TEMP_COLD }
+    { "WasFireDown", sizeof(b8), FIELD_TEMP_COLD },
+    { "ReloadCooldown", sizeof(f32), FIELD_TEMP_COLD},
+    { "AmmoPistol", sizeof(f32), FIELD_TEMP_COLD},
+    { "AmmoAK", sizeof(f32), FIELD_TEMP_COLD},
+    { "HasReloaded", sizeof(b8), FIELD_TEMP_COLD}
 };
 
 DSAPI StructLayout Player_layout = {
@@ -100,6 +110,10 @@ void playerUpdate(Archetype *arch, f32 dt)
     f32  *Spread  = (f32 *)fields[26];
     f32  *RecoilR = (f32 *)fields[27];
     b8   *WasFire = (b8 *)fields[28];
+    f32 *ReloadCD = (f32 *)fields[29];
+    f32 *AmmoPistol = (f32 *)fields[30];
+    f32 *AmmoAK = (f32 *)fields[31];
+    b8 *HasRld = (b8 *)fields[32];
 
     // Hide local player mesh in first-person.
     u32 *ModelID = (u32 *)fields[23];
@@ -206,12 +220,52 @@ void playerUpdate(Archetype *arch, f32 dt)
         VelY[0] = JUMP_FORCE;
 
     // Weapon switch.
-    if (isKeyDown(KEY_1) || isButtonDown(0, BUTTON_LEFTSHOULDER))  Weapon[0] = WEAPON_PISTOL;
-    if (isKeyDown(KEY_2) || isButtonDown(0, BUTTON_RIGHTSHOULDER)) Weapon[0] = WEAPON_AK47;
+    if (isKeyDown(KEY_1) || isButtonDown(0, BUTTON_LEFTSHOULDER) && Weapon[0] != WEAPON_PISTOL) 
+    { 
+        Weapon[0] = WEAPON_PISTOL;
+        AmmoPistol = PISTOL_AMMO;
+        HasReloaded[0] = true;
+    }
+    if (isKeyDown(KEY_2) || isButtonDown(0, BUTTON_RIGHTSHOULDER) && Weapon[0] != WEAPON_AK47) 
+    {
+        Weapon[0] = WEAPON_AK47;
+        AmmoAK = AK_AMMO;
+        HasReloaded[0] = true;
+    }
 
     // Fire cooldown.
     if (FirCD[0] > 0.0f)
         FirCD[0] -= dt;
+
+    // Reload 
+    if (isKeyDown(KEY_R) && HasReloaded[0])
+    {
+        if (Weapon[0] == WEAPON_AK47) ReloadCD[0] += AK_RELOAD;
+        if (Weapon[0] == WEAPON_PISTOL) ReloadCD[0] += PISTOL_RELOAD;
+    }
+
+    // Reload cooldown
+    if (ReloadCD[0] > 0.0f)
+        {
+            ReloadCD[0] -= dt;
+            HasReloaded[0] = false;
+        }
+
+    if (ReloadCD[0] <= 0.0f && !HasReloaded[0]) 
+    {
+        ReloadCD[0] = 0.0f;
+        if (Weapon[0] == WEAPON_PISTOL) 
+        {
+            AmmoPistol = PISTOL_AMMO;
+        }
+
+        if (Weapon[0] == WEAPON_AK47)
+        {
+            AmmoAK = AK_AMMO;
+        }
+
+        HasReloaded[0] = true;
+    }
 
     // Shooting.
     Vec2 triggers = getJoystickAxis(0, JOYSTICK_TRIGGER_LEFT, JOYSTICK_TRIGGER_RIGHT);
@@ -222,15 +276,16 @@ void playerUpdate(Archetype *arch, f32 dt)
 
     b8 canFire = false;
     if (Weapon[0] == WEAPON_PISTOL)
-        canFire = fireDown && !WasFire[0] && FirCD[0] <= 0.0f;
+        canFire = fireDown && !WasFire[0] && FirCD[0] <= 0.0f && HasReloaded[0];
     else
-        canFire = fireDown && FirCD[0] <= 0.0f;
+        canFire = fireDown && FirCD[0] <= 0.0f && HasReloaded[0];
 
     if (canFire)
     {
         f32 bulletSpeed = (Weapon[0] == WEAPON_PISTOL) ? PISTOL_SPEED : AK_SPEED;
         f32 cooldown    = (Weapon[0] == WEAPON_PISTOL) ? PISTOL_COOLDOWN : AK_COOLDOWN;
         f32 recoilKick  = (Weapon[0] == WEAPON_PISTOL) ? PISTOL_RECOIL : AK_RECOIL;
+        f32 firstRecoil = (Weapon[0] == WEAPON_PISTOL) ? PISTOL_RECOIL_FIRST : AK_RECOIL_FIRST;
 
 
         f32 spreadX = Spread[0] * ((f32)(rand() % 2001 - 1000) / 1000.0f);
@@ -248,17 +303,29 @@ void playerUpdate(Archetype *arch, f32 dt)
         bulletSpawn(spawnPos, dir, bulletSpeed);
 
         FirCD[0] = cooldown;
-        RecoilR[0] += recoilKick;
-        Pitch[0]   += recoilKick;
+        if (Spread[0] == 0.0f) 
+        {
+            RecoilR[0] += firstRecoil;
+            Pitch[0] += firstRecoil;
+        }
+        else
+        {
+            RecoilR[0] += recoilKick;
+            Pitch[0]   += recoilKick;
+        }
 
         if (Weapon[0] == WEAPON_AK47)
         {
             Spread[0] += AK_SPREAD_RATE;
             if (Spread[0] > AK_SPREAD_MAX) Spread[0] = AK_SPREAD_MAX;
+            AmmoAK -= 1;
+            if (AmmoAK == 0) ReloadCD += AK_RELOAD;
         }
         else
         {
             Spread[0] = PISTOL_SPREAD_MAX;
+            AmmoPistol -= 1;
+            if (AmmoPistol == 0) ReloadCD += PISTOL_RELOAD;
         }
     }
 
@@ -267,6 +334,8 @@ void playerUpdate(Archetype *arch, f32 dt)
         Spread[0] -= AK_SPREAD_DECAY * dt;
         if (Spread[0] < 0.0f) Spread[0] = 0.0f;
     }
+
+    
 
     WasFire[0] = fireDown;
 
