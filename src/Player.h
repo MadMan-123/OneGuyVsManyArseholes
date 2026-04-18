@@ -1,6 +1,5 @@
 #pragma once
 // Generated scaffold; gameplay edits are allowed.
-#define DRUID_SYSTEM_EXPORT
 #include <druid.h>
 
 #ifdef __cplusplus

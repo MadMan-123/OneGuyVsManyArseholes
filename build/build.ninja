@@ -53,6 +53,15 @@ build CMakeFiles/game.dir/src/Bullet.c.obj: C_COMPILER__game_unscanned_ C$:/User
   OBJECT_FILE_DIR = CMakeFiles\game.dir\src
   TARGET_SUPPORT_DIR = CMakeFiles\game.dir
 
+build CMakeFiles/game.dir/src/Gun.c.obj: C_COMPILER__game_unscanned_ C$:/Users/tomr2/Documents/GitHub/OneGuyVsManyArseholes/src/Gun.c || cmake_object_order_depends_target_game
+  DEFINES = -DDRUID_SYSTEM_EXPORT -DGAME_EXPORT -Dgame_EXPORTS
+  DEP_FILE = CMakeFiles\game.dir\src\Gun.c.obj.d
+  FLAGS = -std=gnu11
+  INCLUDES = -IC:/Users/tomr2/Documents/GitHub/OneGuyVsManyArseholes/deps/include -IC:/Users/tomr2/Documents/GitHub/OneGuyVsManyArseholes/deps/include/GL -IC:/Users/tomr2/Documents/GitHub/OneGuyVsManyArseholes/deps/include/SDL3
+  OBJECT_DIR = CMakeFiles\game.dir
+  OBJECT_FILE_DIR = CMakeFiles\game.dir\src
+  TARGET_SUPPORT_DIR = CMakeFiles\game.dir
+
 build CMakeFiles/game.dir/src/Player.c.obj: C_COMPILER__game_unscanned_ C$:/Users/tomr2/Documents/GitHub/OneGuyVsManyArseholes/src/Player.c || cmake_object_order_depends_target_game
   DEFINES = -DDRUID_SYSTEM_EXPORT -DGAME_EXPORT -Dgame_EXPORTS
   DEP_FILE = CMakeFiles\game.dir\src\Player.c.obj.d
@@ -79,7 +88,7 @@ build CMakeFiles/game.dir/src/game.cpp.obj: CXX_COMPILER__game_unscanned_ C$:/Us
 #############################################
 # Link the shared library C:\Users\tomr2\Documents\GitHub\OneGuyVsManyArseholes\bin\libgame.dll
 
-build C$:/Users/tomr2/Documents/GitHub/OneGuyVsManyArseholes/bin/libgame.dll C$:/Users/tomr2/Documents/GitHub/OneGuyVsManyArseholes/bin/libgame.dll.a: CXX_SHARED_LIBRARY_LINKER__game_ CMakeFiles/game.dir/src/Bullet.c.obj CMakeFiles/game.dir/src/Player.c.obj CMakeFiles/game.dir/src/game.cpp.obj | C$:/Users/tomr2/Documents/GitHub/OneGuyVsManyArseholes/deps/lib/libdruid.dll.a C$:/Users/tomr2/Documents/GitHub/OneGuyVsManyArseholes/deps/lib/libglew.dll.a C$:/Users/tomr2/Documents/GitHub/OneGuyVsManyArseholes/deps/lib/libSDL3.dll.a
+build C$:/Users/tomr2/Documents/GitHub/OneGuyVsManyArseholes/bin/libgame.dll C$:/Users/tomr2/Documents/GitHub/OneGuyVsManyArseholes/bin/libgame.dll.a: CXX_SHARED_LIBRARY_LINKER__game_ CMakeFiles/game.dir/src/Bullet.c.obj CMakeFiles/game.dir/src/Gun.c.obj CMakeFiles/game.dir/src/Player.c.obj CMakeFiles/game.dir/src/game.cpp.obj | C$:/Users/tomr2/Documents/GitHub/OneGuyVsManyArseholes/deps/lib/libdruid.dll.a C$:/Users/tomr2/Documents/GitHub/OneGuyVsManyArseholes/deps/lib/libglew.dll.a C$:/Users/tomr2/Documents/GitHub/OneGuyVsManyArseholes/deps/lib/libSDL3.dll.a
   LINK_FLAGS = -shared
   LINK_LIBRARIES = C:/Users/tomr2/Documents/GitHub/OneGuyVsManyArseholes/deps/lib/libdruid.dll.a  C:/Users/tomr2/Documents/GitHub/OneGuyVsManyArseholes/deps/lib/libglew.dll.a  C:/Users/tomr2/Documents/GitHub/OneGuyVsManyArseholes/deps/lib/libSDL3.dll.a  -lopengl32  -lgdi32  -luser32  -lwinmm  -lkernel32 -luser32 -lgdi32 -lwinspool -lshell32 -lole32 -loleaut32 -luuid -lcomdlg32 -ladvapi32
   OBJECT_DIR = CMakeFiles\game.dir

@@ -5,6 +5,7 @@
 file(GLOB NEW_GLOB LIST_DIRECTORIES true "C:/Users/tomr2/Documents/GitHub/OneGuyVsManyArseholes/src/*.c")
 set(OLD_GLOB
   "C:/Users/tomr2/Documents/GitHub/OneGuyVsManyArseholes/src/Bullet.c"
+  "C:/Users/tomr2/Documents/GitHub/OneGuyVsManyArseholes/src/Gun.c"
   "C:/Users/tomr2/Documents/GitHub/OneGuyVsManyArseholes/src/Player.c"
   )
 if(NOT "${NEW_GLOB}" STREQUAL "${OLD_GLOB}")

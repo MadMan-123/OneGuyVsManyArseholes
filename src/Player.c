@@ -1,6 +1,6 @@
-#define DRUID_SYSTEM_EXPORT
 #include "Player.h"
 #include "Bullet.h"
+#include "Gun.h"
 #include <stdlib.h>
 
 #define CAM_ROTATE_SPEED   1.0f
@@ -113,7 +113,7 @@ void playerUpdate(Archetype *arch, f32 dt)
     f32 *ReloadCD = (f32 *)fields[29];
     f32 *AmmoPistol = (f32 *)fields[30];
     f32 *AmmoAK = (f32 *)fields[31];
-    b8 *HasRld = (b8 *)fields[32];
+    b8 *HasReloaded = (b8 *)fields[32];
 
     // Hide local player mesh in first-person.
     u32 *ModelID = (u32 *)fields[23];
@@ -223,13 +223,13 @@ void playerUpdate(Archetype *arch, f32 dt)
     if (isKeyDown(KEY_1) || isButtonDown(0, BUTTON_LEFTSHOULDER) && Weapon[0] != WEAPON_PISTOL) 
     { 
         Weapon[0] = WEAPON_PISTOL;
-        AmmoPistol = PISTOL_AMMO;
+        AmmoPistol[0] = PISTOL_AMMO;
         HasReloaded[0] = true;
     }
     if (isKeyDown(KEY_2) || isButtonDown(0, BUTTON_RIGHTSHOULDER) && Weapon[0] != WEAPON_AK47) 
     {
         Weapon[0] = WEAPON_AK47;
-        AmmoAK = AK_AMMO;
+        AmmoAK[0] = AK_AMMO;
         HasReloaded[0] = true;
     }
 
@@ -256,12 +256,12 @@ void playerUpdate(Archetype *arch, f32 dt)
         ReloadCD[0] = 0.0f;
         if (Weapon[0] == WEAPON_PISTOL) 
         {
-            AmmoPistol = PISTOL_AMMO;
+            AmmoPistol[0] = PISTOL_AMMO;
         }
 
         if (Weapon[0] == WEAPON_AK47)
         {
-            AmmoAK = AK_AMMO;
+            AmmoAK[0] = AK_AMMO;
         }
 
         HasReloaded[0] = true;
@@ -318,14 +318,14 @@ void playerUpdate(Archetype *arch, f32 dt)
         {
             Spread[0] += AK_SPREAD_RATE;
             if (Spread[0] > AK_SPREAD_MAX) Spread[0] = AK_SPREAD_MAX;
-            AmmoAK -= 1;
-            if (AmmoAK == 0) ReloadCD += AK_RELOAD;
+            AmmoAK[0] -= 1;
+            if (AmmoAK[0] == 0) ReloadCD[0] += AK_RELOAD;
         }
         else
         {
             Spread[0] = PISTOL_SPREAD_MAX;
-            AmmoPistol -= 1;
-            if (AmmoPistol == 0) ReloadCD += PISTOL_RELOAD;
+            AmmoPistol[0] -= 1;
+            if (AmmoPistol[0] == 0) ReloadCD[0] += PISTOL_RELOAD;
         }
     }
 

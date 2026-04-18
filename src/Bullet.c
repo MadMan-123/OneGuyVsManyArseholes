@@ -1,4 +1,3 @@
-#define DRUID_SYSTEM_EXPORT
 #include "Bullet.h"
 
 #define POOL_CAPACITY   256
