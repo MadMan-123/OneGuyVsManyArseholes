@@ -25,7 +25,7 @@ file(GLOB GAME_SOURCES CONFIGURE_DEPENDS
 list(FILTER GAME_SOURCES EXCLUDE REGEX "main\\.cpp$")
 
 add_library(game SHARED ${GAME_SOURCES})
-target_compile_definitions(game PRIVATE GAME_EXPORT DRUID_SYSTEM_EXPORT)
+target_compile_definitions(game PRIVATE GAME_EXPORT)
 
 if(MSVC)
     target_link_libraries(game PRIVATE

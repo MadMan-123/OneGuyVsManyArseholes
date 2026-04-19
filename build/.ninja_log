@@ -1,14 +1,11 @@
 # ninja log v7
-87	366	7982189548983518	C:/Users/tomr2/Documents/GitHub/OneGuyVsManyArseholes/build/CMakeFiles/cmake.verify_globs	a913c4888ebbc32f
+72	358	7982202887309160	C:/Users/tomr2/Documents/GitHub/OneGuyVsManyArseholes/build/CMakeFiles/cmake.verify_globs	a913c4888ebbc32f
 428	4117	7982187949348035	CMakeFiles/game.dir/src/Bullet.c.obj	bb0a59e389612fa
 412	2169	7982189328432740	CMakeFiles/game.dir/src/Player.c.obj	687608347952d425
 470	3735	7981532923462852	CMakeFiles/game_standalone.dir/src/main.cpp.obj	e8659549a231873b
 550	5762	7982187950481103	CMakeFiles/game.dir/src/game.cpp.obj	38167e9e2aea6d24
-2175	8405	7982189371533686	C:/Users/tomr2/Documents/GitHub/OneGuyVsManyArseholes/bin/libgame.dll	d61927ede4e196aa
-2175	8405	7982189371533686	C:/Users/tomr2/Documents/GitHub/OneGuyVsManyArseholes/bin/libgame.dll.a	d61927ede4e196aa
-8407	10389	7982189408384493	C:/Users/tomr2/Documents/GitHub/OneGuyVsManyArseholes/bin/OneGuyVsManyArseholes.exe	cf5a546bd5b9bddc
-72	358	7982202887309160	C:/Users/tomr2/Documents/GitHub/OneGuyVsManyArseholes/build/CMakeFiles/cmake.verify_globs	a913c4888ebbc32f
-453	2274	7982202891100426	CMakeFiles/game.dir/src/Gun.c.obj	9f818e03b5fc7949
 2283	6669	7982202929846318	C:/Users/tomr2/Documents/GitHub/OneGuyVsManyArseholes/bin/libgame.dll	16011d621d38a822
 2283	6669	7982202929846318	C:/Users/tomr2/Documents/GitHub/OneGuyVsManyArseholes/bin/libgame.dll.a	16011d621d38a822
 6672	8708	7982202953284932	C:/Users/tomr2/Documents/GitHub/OneGuyVsManyArseholes/bin/OneGuyVsManyArseholes.exe	cf5a546bd5b9bddc
+453	2274	7982202891100426	CMakeFiles/game.dir/src/Gun.c.obj	9f818e03b5fc7949
+80	371	7983005125621081	C:/Users/tomr2/Documents/GitHub/OneGuyVsManyArseholes/build/CMakeFiles/cmake.verify_globs	a913c4888ebbc32f

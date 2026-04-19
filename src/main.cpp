@@ -31,7 +31,7 @@ static void loadStandaloneSkybox(void)
 
 static void _init(void)
 {
-    // Create renderer in standalone mode.
+    // Create the renderer (editor normally does this)
     if (!renderer && g_app && g_app->display)
     {
         Renderer *r = createRenderer(g_app->display, 70.0f, 0.1f, 100.0f, 8, 16, 8);
@@ -40,9 +40,8 @@ static void _init(void)
             u32 idx = 0;
             findInMap(&resources->shaderIDs, "default", &idx);
             r->defaultShader = resources->shaderHandles[idx];
-            // Create gameplay camera.
-            Vec3 camStartPos = {0.0f, 2.0f, 8.0f};
-            u32 camSlot = rendererAcquireCamera(r, camStartPos, 70.0f,
+            // Acquire a camera for the game
+            u32 camSlot = rendererAcquireCamera(r, (Vec3){0.0f, 2.0f, 8.0f}, 70.0f,
                                                 16.0f / 9.0f, 0.1f, 100.0f);
             rendererSetActiveCamera(r, camSlot);
         }

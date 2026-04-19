@@ -15,7 +15,7 @@
   #endif
 #endif
 
-// Game plugin API.
+// plugin interface
 typedef void (*PluginInitFn)(const c8 *projectDir);
 typedef void (*PluginUpdateFn)(f32 dt);
 typedef void (*PluginRenderFn)(f32 dt);
