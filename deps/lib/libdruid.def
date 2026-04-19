@@ -17,7 +17,10 @@ archetypeGetHotEntitySize
 archetypePoolDespawn
 archetypePoolIsAlive
 archetypePoolSpawn
+archetypePoolSpawnFields
 archetypeSetChunkSize
+archetypeSpawnIn
+archetypeSpawnInWithCallback
 arenaCreate
 arenaDestroy
 bakeScene
@@ -34,6 +37,7 @@ bufferRelease
 buildArchetypeSystems
 cameraSetOrthographic
 cameraSetPerspective
+changeScene
 checkForGamepadConnection
 checkForGamepadRemoved
 checkShaderError
@@ -90,6 +94,7 @@ destroySSBO
 destroySceneManager
 dfree
 dirExists
+display DATA
 dllLoad
 dllSymbol
 dllUnload
@@ -117,6 +122,7 @@ generateArchetypeFiles
 geometryBufferCreate
 geometryBufferDestroy
 geometryBufferUpload
+getActiveCamera
 getArchetypeFields
 getEntitySize
 getHalfExtents
@@ -258,11 +264,16 @@ objModelParseVec2
 objModelParseVec3
 objModelToIndexedModel
 onDestroy
+physApplyForce
+physApplyImpulse
 physAutoRegisterScene
 physBodyApplyForce
 physBodyApplyImpulse
 physBodyApplyImpulseAt
 physBodyApplyTorque
+physBodyGetPosition
+physBodyGetVelocity
+physBodySetVelocity
 physBroadphaseQuery
 physBroadphaseRebuild
 physColliderComputeAABB
@@ -276,12 +287,13 @@ physColliderSetOffset
 physColliderSetTrigger
 physGetBodyArchetype
 physGetBodyArchetypeCount
+physGetPosition
+physGetVelocity
 physInit
-physOverlapBox
-physOverlapSphere
 physRaycast
 physRaycastAll
 physRegisterArchetype
+physSetVelocity
 physShutdown
 physTick
 physWorldCreate
@@ -380,6 +392,14 @@ resources DATA
 returnError
 rotateY
 run
+runtime DATA
+runtimeBeginScenePass
+runtimeCreate
+runtimeDefaultConfig
+runtimeDestroy
+runtimeEndScenePass
+runtimeRegisterArchetype
+runtimeUpdate
 saveScene
 sceneManager DATA
 sceneRemapModelIDs

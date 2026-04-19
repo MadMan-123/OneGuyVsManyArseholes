@@ -1,4 +1,0 @@
-C:/Dev/OneGuyVsManyArseholes/build/CMakeFiles/game.dir
-C:/Dev/OneGuyVsManyArseholes/build/CMakeFiles/game_standalone.dir
-C:/Dev/OneGuyVsManyArseholes/build/CMakeFiles/ALL_BUILD.dir
-C:/Dev/OneGuyVsManyArseholes/build/CMakeFiles/ZERO_CHECK.dir

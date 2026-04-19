@@ -1,0 +1,49 @@
+# CMake and build directories
+/build/
+/bin/
+/cmake-build-*/
+/out/
+
+# CMake generated files
+CMakeCache.txt
+cmake_install.cmake
+CMakeFiles/
+CTestTestfile.cmake
+compile_commands.json
+
+# Visual Studio / MSVC
+/.vs/
+*.suo
+*.user
+*.userosscache
+*.VC.db
+*.VC.opendb
+*.opendb
+*.idb
+*.ilk
+*.pdb
+*.ipch
+*.tlog
+*.lastbuildstate
+*.obj
+*.pch
+*.exp
+*.lib
+
+# Common binary outputs
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Generated debug/release folders
+[Dd]ebug/
+[Rr]elease/
+[xX]64/
+[xX]86/
+
+# Logs and temp files
+*.log
+*.tmp
+*.temp
+*.cache

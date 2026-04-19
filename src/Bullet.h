@@ -34,7 +34,6 @@ DECLARE_ARCHETYPE(Bullet, BULLET_FIELDS)
 
 DSAPI void bulletInit(Archetype *arch);
 DSAPI void bulletUpdate(Archetype *arch, f32 dt);
-DSAPI void bulletRender(Archetype *arch, Renderer *r);
 DSAPI void bulletDestroy(void);
 
 DSAPI void bulletSpawn(Vec3 position, Vec3 direction, f32 speed);

@@ -29,16 +29,9 @@
 #define DEBUG_DRAW_MOVE_AXES 1
 
 static b8 s_wasEscDown = false;
-static b8 s_physicsInitialized = false;
 static b8 s_mouseCapturedOnStart = false;
 
 DEFINE_ARCHETYPE(Player, PLAYER_FIELDS)
-
-// DRUID_FLAGS 0x05
-// isSingle
-// isPhysicsBody
-
-static u32 s_ibSlot = (u32)-1;
 
 //=============================================================================
 // Helpers
@@ -189,7 +182,6 @@ static void playerShoot(u32 *Weapon, f32 *FirCD, f32 *Spread, f32 *RecoilR,
 
 void playerInit(void)
 {
-    s_ibSlot = rendererAcquireInstanceBuffer(renderer, 1024);
 }
 
 void playerUpdate(Archetype *arch, f32 dt)
@@ -217,30 +209,6 @@ void playerUpdate(Archetype *arch, f32 dt)
     // parts while still allowing a separate placed scene model as a guide.
     u32 *ModelID = (u32 *)fields[PF_MODEL_ID];
     ModelID[0] = (u32)-1;
-
-    // one-time physics defaults
-    if (!s_physicsInitialized)
-    {
-        u32 *BodyType = (u32 *)fields[PF_BODY_TYPE];
-        f32 *Mass     = (f32 *)fields[PF_MASS];
-        f32 *Restit   = (f32 *)fields[PF_RESTITUTION];
-        f32 *Damp     = (f32 *)fields[PF_DAMPING];
-        f32 *ColHalfX = (f32 *)fields[PF_HALF_X];
-        f32 *ColHalfY = (f32 *)fields[PF_HALF_Y];
-        f32 *ColHalfZ = (f32 *)fields[PF_HALF_Z];
-
-        BodyType[0] = PHYS_BODY_DYNAMIC;
-        Mass[0]     = 80.0f;
-        Restit[0]   = 0.0f;
-        Damp[0]     = 0.1f;
-        ColHalfX[0] = 0.4f;
-        ColHalfY[0] = 0.9f;
-        ColHalfZ[0] = 0.4f;
-
-        s_physicsInitialized = true;
-        INFO("Player physics init: bt=%u mass=%.1f damp=%.2f half=(%.2f,%.2f,%.2f)",
-             BodyType[0], Mass[0], Damp[0], ColHalfX[0], ColHalfY[0], ColHalfZ[0]);
-    }
 
     if (!s_mouseCapturedOnStart)
     {
@@ -288,9 +256,7 @@ void playerRender(Archetype *arch, Renderer *r)
 
 void playerDestroy(void)
 {
-    if (s_ibSlot != (u32)-1) { rendererReleaseInstanceBuffer(renderer, s_ibSlot); s_ibSlot = (u32)-1; }
     setMouseCaptured(false);
-    s_physicsInitialized = false;
     s_mouseCapturedOnStart = false;
 }
 
