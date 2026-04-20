@@ -1,37 +1,64 @@
 #include "Player.h"
 #include "Bullet.h"
+#include "game.h"
 #include <stdlib.h>
 
-#define CAM_ROTATE_SPEED   1.0f
-#define MOVE_SPEED         8.0f
-#define SPRINT_MULTIPLIER  2.0f
-#define JUMP_FORCE         6.0f
-#define EYE_HEIGHT         1.6f
+#define CAM_ROTATE_SPEED      1.0f
+#define MOVE_SPEED            8.0f
+#define SPRINT_MULTIPLIER     2.0f
+#define JUMP_FORCE            6.0f
+#define EYE_HEIGHT            1.6f
+#define RECOIL_RECOVERY_SPEED 2.0f
+
+#define BTN_FIRE MOUSE_RIGHT
+#define BTN_ADS  MOUSE_X1
+
+#define FOV_NORMAL 70.0f
+#define FOV_ADS    45.0f
+
+// Per-weapon muzzle tip offsets (hip)
+#define MUZZLE_PISTOL_HIP_X  0.30f
+#define MUZZLE_PISTOL_HIP_Y -0.25f
+#define MUZZLE_PISTOL_HIP_Z -0.90f
+#define MUZZLE_AK_HIP_X      0.10f
+#define MUZZLE_AK_HIP_Y     -0.20f
+#define MUZZLE_AK_HIP_Z     -1.00f
+// Per-weapon muzzle tip offsets (ADS)
+#define MUZZLE_PISTOL_ADS_X  0.00f
+#define MUZZLE_PISTOL_ADS_Y -0.10f
+#define MUZZLE_PISTOL_ADS_Z -0.90f
+#define MUZZLE_AK_ADS_X      0.00f
+#define MUZZLE_AK_ADS_Y     -0.10f
+#define MUZZLE_AK_ADS_Z     -1.00f
 
 #define WEAPON_PISTOL  0
 #define WEAPON_AK47    1
 
-#define PISTOL_COOLDOWN    0.15f
-#define PISTOL_SPEED       120.0f
-#define PISTOL_SPREAD_MAX  0.01f
-#define PISTOL_RECOIL      0.03f
+#define PISTOL_COOLDOWN     0.15f
+#define PISTOL_AMMO         9.0f
+#define PISTOL_RELOAD       1.8f
+#define PISTOL_SPEED        120.0f
+#define PISTOL_SPREAD_MAX   0.01f
+#define PISTOL_RECOIL       0.03f
+#define PISTOL_RECOIL_FIRST 0.035f
 
 #define AK_COOLDOWN        0.1f
+#define AK_AMMO            30.0f
+#define AK_RELOAD          3.1f
 #define AK_SPEED           180.0f
 #define AK_SPREAD_MAX      0.06f
 #define AK_SPREAD_RATE     0.012f
 #define AK_SPREAD_DECAY    0.08f
 #define AK_RECOIL          0.05f
-
-#define RECOIL_RECOVERY_SPEED 2.0f
-
-// Temporary debug: draw movement basis axes at the player each frame.
-#define DEBUG_DRAW_MOVE_AXES 1
-
-static b8 s_wasEscDown = false;
-static b8 s_mouseCapturedOnStart = false;
+#define AK_RECOIL_FIRST    0.10f
 
 DEFINE_ARCHETYPE(Player, PLAYER_FIELDS)
+
+static b8  s_wasEscDown          = false;
+static b8  s_mouseCapturedOnStart = false;
+static f32 s_currentFov           = FOV_NORMAL;
+static f32 s_cachedAspectRatio    = 16.0f / 9.0f;
+
 
 //=============================================================================
 // Helpers
@@ -42,7 +69,6 @@ static void playerLook(f32 *Yaw, f32 *Pitch, f32 *RecoilR, Vec4 *Rot, f32 dt)
     Pitch[0] += yLookAxis * CAM_ROTATE_SPEED * dt;
     Pitch[0]  = clamp(Pitch[0], -radians(89.0f), radians(89.0f));
 
-    // bleed off accumulated recoil
     if (RecoilR[0] > 0.0f)
     {
         f32 recover = RECOIL_RECOVERY_SPEED * dt;
@@ -61,8 +87,6 @@ static void playerMove(f32 *VelX, f32 *VelY, f32 *VelZ, b8 *IsGnd,
 {
     Vec3 forward = quatRotateVec3(Rot, v3Forward);
     Vec3 right   = quatRotateVec3(Rot, v3Right);
-
-    // Keep movement on the ground plane even if the view is pitched up/down.
     forward.y = 0.0f; forward = v3Norm(forward);
     right.y   = 0.0f; right   = v3Norm(right);
 
@@ -71,103 +95,110 @@ static void playerMove(f32 *VelX, f32 *VelY, f32 *VelZ, b8 *IsGnd,
 
     Vec3 move = v3Add(v3Scale(forward, yInputAxis), v3Scale(right, -xInputAxis));
     f32 len = v3Mag(move);
-    if (len > 0.001f)
-        move = v3Scale(move, speed / len);
-    else
-        move = (Vec3){0, 0, 0};
+    move = (len > 0.001f) ? v3Scale(move, speed / len) : (Vec3){0, 0, 0};
 
-    // leave vertical velocity to physics
     VelX[0] = move.x;
     VelZ[0] = move.z;
 
-    // ground check
     IsGnd[0] = false;
     if (physicsWorld)
     {
-        PhysRay ray;
-        ray.origin      = (Vec3){posX, posY, posZ};
-        ray.direction   = (Vec3){0.0f, -1.0f, 0.0f};
-        ray.maxDistance = 0.9f + 0.15f;
-        ray.layerMask   = 0xFFFFFFFF;
-        PhysRayHit hit  = physRaycast(physicsWorld, ray);
-        if (hit.hit) IsGnd[0] = true;
+        PhysRay ray = {
+            .origin      = (Vec3){posX, posY, posZ},
+            .direction   = (Vec3){0.0f, -1.0f, 0.0f},
+            .maxDistance = 0.9f + 0.15f,
+            .layerMask   = 0xFFFFFFFF,
+        };
+        if (physRaycast(physicsWorld, ray).hit) IsGnd[0] = true;
     }
 
     if (IsGnd[0] && (isKeyDown(KEY_SPACE) || isButtonDown(0, BUTTON_CROSS)))
         VelY[0] = JUMP_FORCE;
 }
 
-static void drawMovementAxesDebug(Vec3 origin, Vec4 rot)
-{
-#if DEBUG_DRAW_MOVE_AXES
-    const f32 len = 1.5f;
-    const f32 head = 0.12f;
-
-    Vec3 forward = quatRotateVec3(rot, v3Forward);
-    Vec3 right   = quatRotateVec3(rot, v3Right);
-    forward.y = 0.0f;
-    right.y   = 0.0f;
-    forward = v3Norm(forward);
-    right   = v3Norm(right);
-
-    // Right (red), Up (green), Forward (blue)
-    gizmoDrawArrow(origin, v3Add(origin, v3Scale(right, len)), head, GIZMO_RED);
-    gizmoDrawArrow(origin, v3Add(origin, v3Scale(v3Up, len * 0.75f)), head, GIZMO_GREEN);
-    gizmoDrawArrow(origin, v3Add(origin, v3Scale(forward, len)), head, GIZMO_BLUE);
-#else
-    (void)origin;
-    (void)rot;
-#endif
-}
-
-static void playerShoot(u32 *Weapon, f32 *FirCD, f32 *Spread, f32 *RecoilR,
-                        f32 *Pitch, b8 *WasFire, Vec4 *Rot,
-                        f32 posX, f32 posY, f32 posZ, f32 dt)
+static void playerShoot(u32 *Weapon, f32 *FirCD, f32 *Spread, f32 *RecoilR, f32 *Pitch,
+                        b8 *WasFire, f32 *ReloadCD, f32 *AmmoPistol, f32 *AmmoAK,
+                        b8 *HasReloaded, Vec4 *Rot, f32 posX, f32 posY, f32 posZ,
+                        b8 isAiming, f32 dt)
 {
     if (FirCD[0] > 0.0f) FirCD[0] -= dt;
 
+    // Reload cooldown
+    if (ReloadCD[0] > 0.0f)
+    {
+        ReloadCD[0] -= dt;
+        HasReloaded[0] = false;
+    }
+    if (ReloadCD[0] <= 0.0f && !HasReloaded[0])
+    {
+        ReloadCD[0] = 0.0f;
+        if (Weapon[0] == WEAPON_PISTOL) AmmoPistol[0] = PISTOL_AMMO;
+        if (Weapon[0] == WEAPON_AK47)   AmmoAK[0]     = AK_AMMO;
+        HasReloaded[0] = true;
+    }
+
+    // Manual reload
+    if (isKeyDown(KEY_R) && HasReloaded[0])
+    {
+        ReloadCD[0] = (Weapon[0] == WEAPON_AK47) ? AK_RELOAD : PISTOL_RELOAD;
+    }
+
     Vec2 triggers = getJoystickAxis(0, JOYSTICK_TRIGGER_LEFT, JOYSTICK_TRIGGER_RIGHT);
-    b8 fireDown = isMouseDown(MOUSE_LEFT) || isMouseDown(MOUSE_LEFT + 1) ||
-                  isKeyDown(KEY_LCTRL)    || isKeyDown(KEY_RCTRL) ||
+    b8 fireDown = isMouseDown(BTN_FIRE) ||
+                  isKeyDown(KEY_LCTRL) || isKeyDown(KEY_RCTRL) ||
                   (triggers.y < -0.5f);
 
-    b8 canFire = (Weapon[0] == WEAPON_PISTOL) ? (fireDown && !WasFire[0] && FirCD[0] <= 0.0f)
-                                              : (fireDown && FirCD[0] <= 0.0f);
+    b8 canFire = HasReloaded[0] && FirCD[0] <= 0.0f &&
+                 ((Weapon[0] == WEAPON_PISTOL) ? (fireDown && !WasFire[0]) : fireDown);
 
     if (canFire)
     {
-        f32 bulletSpeed = (Weapon[0] == WEAPON_PISTOL) ? PISTOL_SPEED    : AK_SPEED;
-        f32 cooldown    = (Weapon[0] == WEAPON_PISTOL) ? PISTOL_COOLDOWN : AK_COOLDOWN;
-        f32 recoilKick  = (Weapon[0] == WEAPON_PISTOL) ? PISTOL_RECOIL   : AK_RECOIL;
+        f32 bulletSpeed  = (Weapon[0] == WEAPON_PISTOL) ? PISTOL_SPEED        : AK_SPEED;
+        f32 cooldown     = (Weapon[0] == WEAPON_PISTOL) ? PISTOL_COOLDOWN     : AK_COOLDOWN;
+        f32 recoilKick   = (Weapon[0] == WEAPON_PISTOL) ? PISTOL_RECOIL       : AK_RECOIL;
+        f32 firstRecoil  = (Weapon[0] == WEAPON_PISTOL) ? PISTOL_RECOIL_FIRST : AK_RECOIL_FIRST;
 
         f32 spreadX = Spread[0] * ((f32)(rand() % 2001 - 1000) / 1000.0f);
         f32 spreadY = Spread[0] * ((f32)(rand() % 2001 - 1000) / 1000.0f);
+        Vec3 dir = v3Norm((Vec3){
+            quatRotateVec3(Rot[0], v3Forward).x + spreadX,
+            quatRotateVec3(Rot[0], v3Forward).y + spreadY,
+            quatRotateVec3(Rot[0], v3Forward).z,
+        });
 
-        Vec3 dir = quatRotateVec3(Rot[0], v3Forward);
-        dir.x += spreadX;
-        dir.y += spreadY;
-        dir = v3Norm(dir);
-
-        Vec3 eyePos   = {posX, posY + EYE_HEIGHT, posZ};
-        Vec3 spawnPos = v3Add(eyePos, v3Scale(dir, 0.5f));
+        Vec3 eyePos = {posX, posY + EYE_HEIGHT, posZ};
+        static const Vec3 muzzleHip[2] = {
+            {MUZZLE_PISTOL_HIP_X, MUZZLE_PISTOL_HIP_Y, MUZZLE_PISTOL_HIP_Z},
+            {MUZZLE_AK_HIP_X,     MUZZLE_AK_HIP_Y,     MUZZLE_AK_HIP_Z},
+        };
+        static const Vec3 muzzleADS[2] = {
+            {MUZZLE_PISTOL_ADS_X, MUZZLE_PISTOL_ADS_Y, MUZZLE_PISTOL_ADS_Z},
+            {MUZZLE_AK_ADS_X,     MUZZLE_AK_ADS_Y,     MUZZLE_AK_ADS_Z},
+        };
+        const Vec3 *muzzleTable = isAiming ? muzzleADS : muzzleHip;
+        Vec3 spawnPos = v3Add(eyePos, quatRotateVec3(Rot[0], muzzleTable[Weapon[0]]));
         bulletSpawn(spawnPos, dir, bulletSpeed);
 
+        f32 kick = (Spread[0] == 0.0f) ? firstRecoil : recoilKick;
+        RecoilR[0] += kick;
+        Pitch[0]   += kick;
         FirCD[0]    = cooldown;
-        RecoilR[0] += recoilKick;
-        Pitch[0]   += recoilKick;
 
         if (Weapon[0] == WEAPON_AK47)
         {
             Spread[0] += AK_SPREAD_RATE;
             if (Spread[0] > AK_SPREAD_MAX) Spread[0] = AK_SPREAD_MAX;
+            AmmoAK[0] -= 1.0f;
+            if (AmmoAK[0] <= 0.0f) ReloadCD[0] += AK_RELOAD;
         }
         else
         {
             Spread[0] = PISTOL_SPREAD_MAX;
+            AmmoPistol[0] -= 1.0f;
+            if (AmmoPistol[0] <= 0.0f) ReloadCD[0] += PISTOL_RELOAD;
         }
     }
 
-    // spread decays while trigger is up
     if (!fireDown && Spread[0] > 0.0f)
     {
         Spread[0] -= AK_SPREAD_DECAY * dt;
@@ -180,61 +211,77 @@ static void playerShoot(u32 *Weapon, f32 *FirCD, f32 *Spread, f32 *RecoilR,
 //=============================================================================
 // Lifecycle
 
-void playerInit(void)
-{
-}
+void playerInit(void) {}
 
 void playerUpdate(Archetype *arch, f32 dt)
 {
+
     void **fields = getArchetypeFields(arch, 0);
     if (!fields || arch->arena[0].count == 0) return;
 
-    f32  *PosX    = (f32 *)fields[PF_POS_X];
-    f32  *PosY    = (f32 *)fields[PF_POS_Y];
-    f32  *PosZ    = (f32 *)fields[PF_POS_Z];
-    Vec4 *Rot     = (Vec4 *)fields[PF_ROT];
-    f32  *VelX    = (f32 *)fields[PF_VEL_X];
-    f32  *VelY    = (f32 *)fields[PF_VEL_Y];
-    f32  *VelZ    = (f32 *)fields[PF_VEL_Z];
-    f32  *Yaw     = (f32 *)fields[PF_YAW];
-    f32  *Pitch   = (f32 *)fields[PF_PITCH];
-    b8   *IsGnd   = (b8  *)fields[PF_IS_GROUNDED];
-    u32  *Weapon  = (u32 *)fields[PF_WEAPON];
-    f32  *FirCD   = (f32 *)fields[PF_FIRE_CD];
-    f32  *Spread  = (f32 *)fields[PF_SPREAD];
-    f32  *RecoilR = (f32 *)fields[PF_RECOIL_R];
-    b8   *WasFire = (b8  *)fields[PF_WAS_FIRE];
+    f32  *PosX        = (f32  *)fields[PF_POS_X];
+    f32  *PosY        = (f32  *)fields[PF_POS_Y];
+    f32  *PosZ        = (f32  *)fields[PF_POS_Z];
+    Vec4 *Rot         = (Vec4 *)fields[PF_ROT];
+    f32  *VelX        = (f32  *)fields[PF_VEL_X];
+    f32  *VelY        = (f32  *)fields[PF_VEL_Y];
+    f32  *VelZ        = (f32  *)fields[PF_VEL_Z];
+    f32  *Yaw         = (f32  *)fields[PF_YAW];
+    f32  *Pitch       = (f32  *)fields[PF_PITCH];
+    b8   *IsGnd       = (b8   *)fields[PF_IS_GROUNDED];
+    u32* Weapon      = (u32  *)fields[PF_WEAPON];
+    f32  *FirCD       = (f32  *)fields[PF_FIRE_CD];
+    f32  *Spread      = (f32  *)fields[PF_SPREAD];
+    f32  *RecoilR     = (f32  *)fields[PF_RECOIL_R];
+    b8   *WasFire     = (b8   *)fields[PF_WAS_FIRE];
+    f32  *ReloadCD    = (f32  *)fields[PF_RELOAD_CD];
+    f32  *AmmoPistol  = (f32  *)fields[PF_AMMO_PISTOL];
+    f32  *AmmoAK      = (f32  *)fields[PF_AMMO_AK];
+    b8   *HasReloaded = (b8   *)fields[PF_HAS_RELOADED];
+    b8   *IsAiming    = (b8   *)fields[PF_IS_AIMING];
 
-    // First-person view: hide runtime self mesh to avoid seeing clipped body
-    // parts while still allowing a separate placed scene model as a guide.
-    u32 *ModelID = (u32 *)fields[PF_MODEL_ID];
-    ModelID[0] = (u32)-1;
+    // Hide player mesh in first-person
+    ((u32 *)fields[PF_MODEL_ID])[0] = (u32)-1;
 
     if (!s_mouseCapturedOnStart)
     {
         setMouseCaptured(true);
         s_mouseCapturedOnStart = true;
+        if (display && display->screenHeight > 0)
+            s_cachedAspectRatio = (f32)display->screenWidth / (f32)display->screenHeight;
     }
 
-    // escape toggles mouse capture
     b8 escDown = isKeyDown(KEY_ESCAPE);
-    if (escDown && !s_wasEscDown)
-        setMouseCaptured(!isMouseCaptured());
+    if (escDown && !s_wasEscDown) setMouseCaptured(!isMouseCaptured());
     s_wasEscDown = escDown;
 
+    // Weapon switch
+    if ((isKeyDown(KEY_1) || isButtonDown(0, BUTTON_LEFTSHOULDER)) && Weapon[0] != WEAPON_PISTOL)
+    {
+        Weapon[0]      = WEAPON_PISTOL;
+        AmmoPistol[0]  = PISTOL_AMMO;
+        HasReloaded[0] = true;
+        ReloadCD[0]    = 0.0f;
+    }
+    if ((isKeyDown(KEY_2) || isButtonDown(0, BUTTON_RIGHTSHOULDER)) && Weapon[0] != WEAPON_AK47)
+    {
+        Weapon[0]      = WEAPON_AK47;
+        AmmoAK[0]      = AK_AMMO;
+        HasReloaded[0] = true;
+        ReloadCD[0]    = 0.0f;
+    }
     playerLook(Yaw, Pitch, RecoilR, Rot, dt);
     playerMove(VelX, VelY, VelZ, IsGnd, Rot[0], PosX[0], PosY[0], PosZ[0]);
+    // ADS: right mouse or L2
+    Vec2 triggers  = getJoystickAxis(0, JOYSTICK_TRIGGER_LEFT, JOYSTICK_TRIGGER_RIGHT);
+    b8 wasAiming   = IsAiming[0];
+    IsAiming[0]    = isMouseDown(BTN_ADS) || (triggers.x < -0.5f);
 
-    // weapon select
-    if (isKeyDown(KEY_1) || isButtonDown(0, BUTTON_LEFTSHOULDER))  Weapon[0] = WEAPON_PISTOL;
-    if (isKeyDown(KEY_2) || isButtonDown(0, BUTTON_RIGHTSHOULDER)) Weapon[0] = WEAPON_AK47;
+    playerShoot(Weapon, FirCD, Spread, RecoilR, Pitch, WasFire,
+                ReloadCD, AmmoPistol, AmmoAK, HasReloaded,
+                Rot, PosX[0], PosY[0], PosZ[0], IsAiming[0], dt);
 
-    playerShoot(Weapon, FirCD, Spread, RecoilR, Pitch, WasFire, Rot,
-                PosX[0], PosY[0], PosZ[0], dt);
-
-    drawMovementAxesDebug((Vec3){PosX[0], PosY[0] + 0.05f, PosZ[0]}, Rot[0]);
-
-    // sync camera to eye
+    // Sync camera to eye + FOV for ADS
     if (renderer)
     {
         Camera *cam = rendererGetCamera(renderer, renderer->activeCamera);
@@ -242,30 +289,30 @@ void playerUpdate(Archetype *arch, f32 dt)
         {
             cam->pos         = (Vec3){PosX[0], PosY[0] + EYE_HEIGHT, PosZ[0]};
             cam->orientation = Rot[0];
+
+            f32 targetFov = IsAiming[0] ? FOV_ADS : FOV_NORMAL;
+            if (targetFov != s_currentFov)
+            {
+                cameraSetFov(cam, targetFov);
+                s_currentFov = targetFov;
+            }
         }
     }
 }
 
-void playerRender(Archetype *arch, Renderer *r)
-{
-    // Player is rendered via the game plugin's own archetype.
-    // This no-op prevents the editor falling back to rendererDefaultArchetypeRender
-    // on the scene-placed entity, which would show a duplicate without the game texture.
-    (void)arch; (void)r;
-}
+
+
+void playerRender(Archetype *arch, Renderer *r) { (void)arch; (void)r; }
 
 void playerDestroy(void)
 {
     setMouseCaptured(false);
     s_mouseCapturedOnStart = false;
+    s_currentFov           = FOV_NORMAL;
 }
 
 void druidGetECSSystem_Player(ECSSystemPlugin *out)
 {
-    // game.cpp owns this archetype and calls playerUpdate explicitly.
-    // update=NULL prevents the editor's ECS loop from double-invoking it (double bullets).
-    // render=playerRender (no-op) prevents the editor from falling back to
-    // rendererDefaultArchetypeRender on the scene entity (double player render).
     out->init    = playerInit;
     out->update  = NULL;
     out->render  = playerRender;

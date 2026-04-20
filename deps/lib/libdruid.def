@@ -35,6 +35,7 @@ bufferGet
 bufferIsOccupied
 bufferRelease
 buildArchetypeSystems
+cameraSetFov
 cameraSetOrthographic
 cameraSetPerspective
 changeScene

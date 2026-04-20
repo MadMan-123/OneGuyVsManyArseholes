@@ -1129,6 +1129,10 @@ extern "C"
         Mat4 projection;
         Vec3 pos;
         Vec4 orientation;
+        f32  fovDeg;
+        f32  aspect;
+        f32  nearClip;
+        f32  farClip;
     } Camera;
 
     DAPI Mat4 getViewProjection(const Camera *camera);
@@ -1147,6 +1151,7 @@ extern "C"
     DAPI Mat4 getView(const Camera *camera, b8 removeTranslation);
 
     DAPI void cameraSetPerspective(Camera *cam, f32 fovDeg, f32 aspect, f32 nearClip, f32 farClip);
+    DAPI void cameraSetFov(Camera *cam, f32 fovDeg);
     DAPI void cameraSetOrthographic(Camera *cam, f32 left, f32 right, f32 bottom, f32 top, f32 nearClip, f32 farClip);
 
     //=====================================================================================================================

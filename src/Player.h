@@ -1,6 +1,17 @@
 #pragma once
 #include <druid.h>
 
+
+#define WEAPON_PISTOL  0
+#define WEAPON_AK47    1
+
+#define GUN_HIP_X  0.30f
+#define GUN_HIP_Y -0.20f
+#define GUN_HIP_Z -0.50f
+#define GUN_ADS_X  0.00f
+#define GUN_ADS_Y -0.10f
+#define GUN_ADS_Z -0.60f
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -34,7 +45,12 @@ extern "C" {
     FIELD(PF_FIRE_CD,    "FireCooldown",    f32,  COLD)                      \
     FIELD(PF_SPREAD,     "CurrentSpread",   f32,  COLD)                      \
     FIELD(PF_RECOIL_R,   "RecoilRecovery",  f32,  COLD)                      \
-    FIELD(PF_WAS_FIRE,   "WasFireDown",     b8,   COLD)
+    FIELD(PF_WAS_FIRE,   "WasFireDown",     b8,   COLD)                       \
+    FIELD(PF_RELOAD_CD,  "ReloadCooldown",  f32,  COLD)                       \
+    FIELD(PF_AMMO_PISTOL,"AmmoPistol",      f32,  COLD)                       \
+    FIELD(PF_AMMO_AK,    "AmmoAK",          f32,  COLD)                       \
+    FIELD(PF_HAS_RELOADED,"HasReloaded",    b8,   COLD)                       \
+    FIELD(PF_IS_AIMING,  "IsAiming",       b8,   COLD)
 
 DECLARE_ARCHETYPE(Player, PLAYER_FIELDS)
 

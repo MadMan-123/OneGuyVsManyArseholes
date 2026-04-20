@@ -34,6 +34,11 @@ extern "C" {
 
 GAME_API void druidGetPlugin(GamePlugin *out);
 
+
+extern Archetype g_playerArch;
+extern Archetype g_bulletArch;
+extern Archetype g_gunArch;
+
 #ifdef __cplusplus
 }
 #endif
