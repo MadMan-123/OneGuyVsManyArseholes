@@ -181,6 +181,7 @@ isBoxColliding
 isBoxVsBox
 isBoxVsCylinder
 isButtonDown
+isButtonUp
 isCircleColliding
 isCylinderVsCylinder
 isKeyDown

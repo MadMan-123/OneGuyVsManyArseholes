@@ -58,6 +58,7 @@ static b8  s_wasEscDown          = false;
 static b8  s_mouseCapturedOnStart = false;
 static f32 s_currentFov           = FOV_NORMAL;
 static f32 s_cachedAspectRatio    = 16.0f / 9.0f;
+static b8  s_wasYDown             = false;
 
 
 //=============================================================================
@@ -270,6 +271,26 @@ void playerUpdate(Archetype *arch, f32 dt)
         HasReloaded[0] = true;
         ReloadCD[0]    = 0.0f;
     }
+    // Y/Triangle button toggles between weapons (only on press, not hold)
+    b8 yDown = isButtonDown(0, BUTTON_Y);
+    if (yDown && !s_wasYDown)
+    {
+        if (Weapon[0] == WEAPON_PISTOL)
+        {
+            Weapon[0]      = WEAPON_AK47;
+            AmmoAK[0]      = AK_AMMO;
+            HasReloaded[0] = true;
+            ReloadCD[0]    = 0.0f;
+        }
+        else
+        {
+            Weapon[0]      = WEAPON_PISTOL;
+            AmmoPistol[0]  = PISTOL_AMMO;
+            HasReloaded[0] = true;
+            ReloadCD[0]    = 0.0f;
+        }
+    }
+    s_wasYDown = yDown;
     playerLook(Yaw, Pitch, RecoilR, Rot, dt);
     playerMove(VelX, VelY, VelZ, IsGnd, Rot[0], PosX[0], PosY[0], PosZ[0]);
     // ADS: right mouse or L2
