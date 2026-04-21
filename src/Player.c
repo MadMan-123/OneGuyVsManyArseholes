@@ -94,7 +94,7 @@ static void playerMove(f32 *VelX, f32 *VelY, f32 *VelZ, b8 *IsGnd,
     f32 speed = MOVE_SPEED;
     if (isKeyDown(KEY_LSHIFT) || isButtonDown(0, BUTTON_LEFTSTICK)) speed *= SPRINT_MULTIPLIER;
 
-    Vec3 move = v3Add(v3Scale(forward, yInputAxis), v3Scale(right, -xInputAxis));
+    Vec3 move = v3Add(v3Scale(forward, yInputAxis), v3Scale(right, xInputAxis));
     f32 len = v3Mag(move);
     move = (len > 0.001f) ? v3Scale(move, speed / len) : (Vec3){0, 0, 0};
 
