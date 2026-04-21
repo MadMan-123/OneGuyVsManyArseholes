@@ -8,6 +8,7 @@ EXPORTS
 aalloc
 addScene
 applicationRenderStep
+applyMaterialPresets
 archetypeChunkCount
 archetypeEntityCount
 archetypeGetColdData
@@ -198,6 +199,7 @@ listFilesInDirectory
 loadECSSystemDLL
 loadECSSystemFromHandle
 loadFile
+loadMaterial
 loadMaterialFromAssimp
 loadMaterialTexture
 loadMeshFromAssimp
@@ -402,6 +404,7 @@ runtimeDestroy
 runtimeEndScenePass
 runtimeRegisterArchetype
 runtimeUpdate
+saveMaterial
 saveScene
 sceneManager DATA
 sceneRemapModelIDs
