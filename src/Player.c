@@ -59,6 +59,7 @@ static b8  s_mouseCapturedOnStart = false;
 static f32 s_currentFov           = FOV_NORMAL;
 static f32 s_cachedAspectRatio    = 16.0f / 9.0f;
 static b8  s_wasYDown             = false;
+static b8  s_wasXDown             = false;
 
 
 //=============================================================================
@@ -112,9 +113,13 @@ static void playerMove(f32 *VelX, f32 *VelY, f32 *VelZ, b8 *IsGnd,
         };
         if (physRaycast(physicsWorld, ray).hit) IsGnd[0] = true;
     }
-
-    if (IsGnd[0] && (isKeyDown(KEY_SPACE) || isButtonDown(0, BUTTON_CROSS)))
+    b8 xDown = isButtonDown(0, SDL_GAMEPAD_BUTTON_SOUTH);
+    if (IsGnd[0] && ((isKeyDown(KEY_SPACE)) || xDown && !s_wasXDown))
+    {
         VelY[0] = JUMP_FORCE;
+    }
+    s_wasXDown = xDown;
+        
 }
 
 static void playerShoot(u32 *Weapon, f32 *FirCD, f32 *Spread, f32 *RecoilR, f32 *Pitch,
