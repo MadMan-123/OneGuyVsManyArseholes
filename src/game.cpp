@@ -2,13 +2,18 @@
 #include "Player.h"
 #include "Bullet.h"
 #include "Gun.h"
+#include "Enemy.h"
+#include "AISpawn.h"
 
 Archetype g_playerArch = {0};
 Archetype g_bulletArch = {0};
 Archetype g_gunArch    = {0};
+Archetype g_enemyArch  = {0};
 static b8        g_playerCreated = false;
 static b8        g_bulletCreated = false;
 static b8        g_gunCreated    = false;
+static b8        g_enemyCreated  = false;
+static b8        g_aiSpawned     = false;
 
 static void setupPlayer(void)
 {
@@ -75,23 +80,50 @@ static void setupGun(void)
     gunInit(&g_gunArch);
 }
 
+static void setupEnemy(void)
+{
+    g_enemyArch.flags = 0;
+    FLAG_SET(g_enemyArch.flags, ARCH_BUFFERED);
+    FLAG_SET(g_enemyArch.flags, ARCH_PHYSICS_BODY);
+
+    if (!createArchetype(&Enemy_layout, 512, &g_enemyArch))
+    { ERROR("Failed to create Enemy archetype"); return; }
+    g_enemyCreated = true;
+
+    enemyInit(&g_enemyArch);
+}
+
 static void gameInit(const c8 *projectDir)
 {
     runtimeCreate(projectDir, runtimeDefaultConfig());
 
     setupGun();
     setupBullets();
+    setupEnemy();
     setupPlayer();
     
     runtimeRegisterArchetype(runtime, &g_bulletArch);
+    runtimeRegisterArchetype(runtime, &g_enemyArch);
     runtimeRegisterArchetype(runtime, &g_playerArch);
+    
     setMouseCaptured(true);
 }
 
 static void gameUpdate(f32 dt)
 {
+    // Spawn a few test enemies once at startup
+    if (!g_aiSpawned && g_enemyCreated)
+    {
+        enemySpawnAt((Vec3){5.0f, 5.0f, 5.0f});
+        enemySpawnAt((Vec3){-5.0f, 5.0f, -5.0f});
+        enemySpawnAt((Vec3){10.0f, 5.0f, 0.0f});
+        g_aiSpawned = true;
+        INFO("Test enemies spawned!");
+    }
+
     if (g_playerCreated) playerUpdate(&g_playerArch, dt);
     if (g_bulletCreated) bulletUpdate(&g_bulletArch, dt);
+    if (g_enemyCreated) enemyUpdate(&g_enemyArch, dt);
     runtimeUpdate(runtime, dt);
 }
 
@@ -101,6 +133,7 @@ static void gameRender(f32 dt)
     if (g_playerCreated) rendererDefaultArchetypeRender(&g_playerArch, renderer);
     if (g_bulletCreated) rendererDefaultArchetypeRender(&g_bulletArch, renderer);
     if (g_gunCreated)    rendererDefaultArchetypeRender(&g_gunArch, renderer);
+    if (g_enemyCreated)  rendererDefaultArchetypeRender(&g_enemyArch, renderer);
     runtimeEndScenePass(runtime);
 }
 
@@ -110,6 +143,7 @@ static void gameDestroy(void)
     if (g_playerCreated) { playerDestroy(); destroyArchetype(&g_playerArch); g_playerCreated = false; }
     if (g_bulletCreated) { bulletDestroy(); destroyArchetype(&g_bulletArch); g_bulletCreated = false; }
     if (g_gunCreated)    { gunDestroy();    destroyArchetype(&g_gunArch);    g_gunCreated    = false; }
+    if (g_enemyCreated)  { enemyDestroy();  destroyArchetype(&g_enemyArch);  g_enemyCreated  = false; }
     runtimeDestroy(runtime);
 }
 
