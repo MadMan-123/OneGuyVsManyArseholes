@@ -34,7 +34,6 @@ void onBulletCollideEnter(ContactInfo *info)
 void onEnemyCollideEnter(ContactInfo *info)
 {
     extern Archetype g_playerArch;
-    INFO("onEnemyCollideEnter: other.arch=%p playerArch=%p", (void*)info->other.arch, (void*)&g_playerArch);
     if (info->other.arch != &g_playerArch) return;
 
     // Check attack cooldown

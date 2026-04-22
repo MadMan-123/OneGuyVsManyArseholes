@@ -15,7 +15,18 @@ static b8        g_playerCreated = false;
 static b8        g_bulletCreated = false;
 static b8        g_gunCreated    = false;
 static b8        g_enemyCreated  = false;
-static b8        g_aiSpawned     = false;
+
+// ── Wave system ──────────────────────────────────────────────────────────────
+#define MAX_SPAWN_POINTS 64
+#define SPAWN_INTERVAL   1.5f    // seconds between individual spawns
+
+static Vec3 g_spawnPoints[MAX_SPAWN_POINTS];
+static u32  g_spawnPointCount  = 0;
+static b8   g_spawnPointsReady = false;
+static u32  g_killCount  = 0;
+static u32  g_maxEnemies = 2;
+static f32  g_spawnTimer = 0.0f;
+static u32  g_nextSpawn  = 0;
 
 static b8 segmentVsAABB(f32 sx, f32 sy, f32 sz,
                          f32 ex, f32 ey, f32 ez,
@@ -113,18 +124,62 @@ static void bulletHitScan(f32 dt)
     }
 }
 
+#define ENEMY_MAX_HP 50.0f
+
 static void spawnAndRegisterEnemy(Vec3 pos)
 {
     u32 poolIdx = enemySpawnAt(pos);
     if (poolIdx == (u32)-1) return;
 
-    HealthID hid = healthRegister(&g_healthManager, 100.0f);
+    HealthID hid = healthRegister(&g_healthManager, ENEMY_MAX_HP);
     if (hid == HEALTH_ID_INVALID) return;
 
     u32 chunkIdx = poolIdx / g_enemyArch.chunkCapacity;
     u32 localIdx = poolIdx % g_enemyArch.chunkCapacity;
     void **fields = getArchetypeFields(&g_enemyArch, chunkIdx);
     if (fields) ((u32 *)fields[EF_HEALTH_ID])[localIdx] = (u32)hid;
+}
+
+// Returns enemies live for cap comparisons.
+static u32 countLiveEnemies(void)
+{
+    u32 live = 0;
+    for (u32 c = 0; c < g_enemyArch.activeChunkCount; c++)
+    {
+        void **fields = getArchetypeFields(&g_enemyArch, c);
+        if (!fields) continue;
+        b8 *alive = (b8 *)fields[EF_ALIVE];
+        for (u32 i = 0; i < g_enemyArch.arena[c].count; i++)
+            if (alive[i]) live++;
+    }
+    return live;
+}
+
+// Max live enemies as a function of total kills:
+//   kills  0-9  : starts at 2, +1 every 3 kills
+//   kills 10-39 : +2 every 5 kills   (reaches ~15 at 39 kills)
+//   kills 40+   : +5 every 10 kills
+static u32 maxEnemiesFromKills(u32 kills)
+{
+    if (kills < 10) return 2 + kills / 3;
+    if (kills < 40) return 5 + ((kills - 10) / 5) * 2;
+    return               17 + ((kills - 40) / 10) * 5;
+}
+
+// Refills enemies up to g_maxEnemies, one per SPAWN_INTERVAL seconds.
+// Cycles through spawn points round-robin.
+static void waveUpdate(f32 dt)
+{
+    if (g_spawnPointCount == 0) return;
+    if (countLiveEnemies() >= g_maxEnemies) return;
+
+    g_spawnTimer -= dt;
+    if (g_spawnTimer > 0.0f) return;
+    g_spawnTimer = SPAWN_INTERVAL;
+
+    Vec3 pos = g_spawnPoints[g_nextSpawn % g_spawnPointCount];
+    g_nextSpawn++;
+    spawnAndRegisterEnemy(pos);
 }
 
 static void setupPlayer(void)
@@ -235,8 +290,9 @@ static void gameInit(const c8 *projectDir)
     setMouseCaptured(true);
 }
 
-static void despawnDeadEnemies(void)
+static u32 despawnDeadEnemies(void)
 {
+    u32 killed = 0;
     for (u32 c = 0; c < g_enemyArch.activeChunkCount; c++)
     {
         void **fields = getArchetypeFields(&g_enemyArch, c);
@@ -253,37 +309,46 @@ static void despawnDeadEnemies(void)
             {
                 u32 poolIdx = c * g_enemyArch.chunkCapacity + i;
                 archetypePoolDespawn(&g_enemyArch, poolIdx);
-                INFO("Enemy %u died (poolIdx=%u)", i, poolIdx);
+                killed++;
             }
         }
     }
+    return killed;
 }
 
 static void gameUpdate(f32 dt)
 {
-    if (!g_aiSpawned && g_enemyCreated)
-    {
-        spawnAndRegisterEnemy((Vec3){ 5.0f, 1.0f,  5.0f});
-        spawnAndRegisterEnemy((Vec3){-5.0f, 1.0f, -5.0f});
-        spawnAndRegisterEnemy((Vec3){10.0f, 1.0f,  0.0f});
-        g_aiSpawned = true;
-        INFO("Test enemies spawned!");
-    }
-
     if (g_playerCreated) playerUpdate(&g_playerArch, dt);
     if (g_bulletCreated) bulletUpdate(&g_bulletArch, dt);
     if (g_enemyCreated)  enemyUpdate(&g_enemyArch, dt);
 
-    // Swept bullet→enemy hit detection (bypasses physics for tunneling-proof results)
     if (g_bulletCreated && g_enemyCreated) bulletHitScan(dt);
 
     runtimeUpdate(runtime, dt);
 
-    // Apply queued damage from collision callbacks
+    // Scene data is available after the first runtimeUpdate — retry every frame until scene is live.
+    if (!g_spawnPointsReady)
+        DEBUG("gameUpdate: sceneRuntime=%p loaded=%d",
+              (void *)sceneRuntime, sceneRuntime ? (int)sceneRuntime->loaded : -1);
+    if (!g_spawnPointsReady && sceneRuntime && sceneRuntime->loaded)
+    {
+        g_spawnPointCount = aiReadSpawnPoints("EnemySpawn", g_spawnPoints, MAX_SPAWN_POINTS);
+        g_spawnPointsReady = true;
+        if (g_spawnPointCount == 0)
+            WARN("gameUpdate: no EnemySpawn entities found in scene");
+        else
+            INFO("gameUpdate: loaded %u EnemySpawn points", g_spawnPointCount);
+    }
+
     damageFlush(&g_damageQueue, &g_healthManager);
 
-    // Remove enemies whose health hit 0
-    if (g_enemyCreated) despawnDeadEnemies();
+    if (g_enemyCreated)
+    {
+        u32 killed    = despawnDeadEnemies();
+        g_killCount  += killed;
+        g_maxEnemies  = maxEnemiesFromKills(g_killCount);
+        waveUpdate(dt);
+    }
 }
 
 static void gameRender(f32 dt)
@@ -303,6 +368,12 @@ static void gameDestroy(void)
     if (g_bulletCreated) { bulletDestroy(); destroyArchetype(&g_bulletArch); g_bulletCreated = false; }
     if (g_gunCreated)    { gunDestroy();    destroyArchetype(&g_gunArch);    g_gunCreated    = false; }
     if (g_enemyCreated)  { enemyDestroy();  destroyArchetype(&g_enemyArch);  g_enemyCreated  = false; }
+    g_spawnPointsReady = false;
+    g_spawnPointCount  = 0;
+    g_killCount        = 0;
+    g_maxEnemies       = 2;
+    g_spawnTimer       = 0.0f;
+    g_nextSpawn        = 0;
     runtimeDestroy(runtime);
 }
 

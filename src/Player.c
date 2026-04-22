@@ -37,7 +37,7 @@
 #define PISTOL_COOLDOWN     0.15f
 #define PISTOL_AMMO         9.0f
 #define PISTOL_RELOAD       1.8f
-#define PISTOL_SPEED        120.0f
+#define PISTOL_SPEED        50.0f
 #define PISTOL_SPREAD_MAX   0.01f
 #define PISTOL_RECOIL       0.03f
 #define PISTOL_RECOIL_FIRST 0.035f
@@ -45,7 +45,7 @@
 #define AK_COOLDOWN        0.1f
 #define AK_AMMO            30.0f
 #define AK_RELOAD          3.1f
-#define AK_SPEED           180.0f
+#define AK_SPEED           70.0f
 #define AK_SPREAD_MAX      0.06f
 #define AK_SPREAD_RATE     0.012f
 #define AK_SPREAD_DECAY    0.08f
