@@ -207,6 +207,7 @@ loadMeshFromAssimpScene
 loadModelFromAssimp
 loadPhysicsDLL
 loadScene
+loadTextureMetadata
 logOutput
 logOutputSrc DATA
 mat3ToMat4
@@ -406,6 +407,7 @@ runtimeRegisterArchetype
 runtimeUpdate
 saveMaterial
 saveScene
+saveTextureMetadata
 sceneManager DATA
 sceneRemapModelIDs
 sceneRuntime DATA
