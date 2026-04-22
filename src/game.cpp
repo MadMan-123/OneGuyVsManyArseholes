@@ -114,9 +114,10 @@ static void gameUpdate(f32 dt)
     // Spawn a few test enemies once at startup
     if (!g_aiSpawned && g_enemyCreated)
     {
-        enemySpawnAt((Vec3){5.0f, 5.0f, 5.0f});
-        enemySpawnAt((Vec3){-5.0f, 5.0f, -5.0f});
-        enemySpawnAt((Vec3){10.0f, 5.0f, 0.0f});
+        // Y = ENEMY_HALF_Y + small clearance so they land on Y=0 ground without penetration
+        enemySpawnAt((Vec3){ 5.0f, 1.0f,  5.0f});
+        enemySpawnAt((Vec3){-5.0f, 1.0f, -5.0f});
+        enemySpawnAt((Vec3){10.0f, 1.0f,  0.0f});
         g_aiSpawned = true;
         INFO("Test enemies spawned!");
     }

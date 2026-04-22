@@ -7,8 +7,11 @@ extern "C" {
 
 #define AI_STATE_IDLE       0u
 #define AI_STATE_AGITATED   1u
-#define AI_STATE_ATTACKING  2u
+#define AI_STATE_CHASE      2u
 #define AI_STATE_SCARED     3u
+
+// Model faces backward — offset applied to yaw when setting rotation
+#define ZOMBIE_YAW_OFFSET   3.14159265f
 
 #define ENEMY_FIELDS(FIELD)                                                   \
     FIELD(EF_ALIVE,        "Alive",            b8,   COLD)                    \
@@ -41,14 +44,15 @@ extern "C" {
     FIELD(EF_VISION_RANGE, "VisionRange",      f32,  COLD)                    \
     FIELD(EF_VISION_COS,   "VisionFovCos",     f32,  COLD)                    \
     FIELD(EF_HEARING,      "HearingRange",     f32,  COLD)                    \
-    FIELD(EF_FIRE_CD,      "FireCooldown",     f32,  COLD)                    \
-    FIELD(EF_LAST_SEEN_X,  "LastSeenX",        f32,  COLD)                    \
-    FIELD(EF_LAST_SEEN_Y,  "LastSeenY",        f32,  COLD)                    \
-    FIELD(EF_LAST_SEEN_Z,  "LastSeenZ",        f32,  COLD)                    \
-    FIELD(EF_LAST_SEEN_AGE,"LastSeenAge",      f32,  COLD)                    \
-    FIELD(EF_WANDER_ANGLE, "WanderAngle",      f32,  COLD)                    \
-    FIELD(EF_YAW,          "Yaw",              f32,  COLD)                    \
-    FIELD(EF_IS_GROUNDED,  "IsGrounded",       b8,   COLD)
+    FIELD(EF_LAST_SEEN_X,   "LastSeenX",        f32,  COLD)                    \
+    FIELD(EF_LAST_SEEN_Y,   "LastSeenY",        f32,  COLD)                    \
+    FIELD(EF_LAST_SEEN_Z,   "LastSeenZ",        f32,  COLD)                    \
+    FIELD(EF_LAST_SEEN_AGE, "LastSeenAge",      f32,  COLD)                    \
+    FIELD(EF_WANDER_X,      "WanderTargetX",    f32,  COLD)                    \
+    FIELD(EF_WANDER_Z,      "WanderTargetZ",    f32,  COLD)                    \
+    FIELD(EF_WANDER_TIMER,  "WanderTimer",      f32,  COLD)                    \
+    FIELD(EF_YAW,           "Yaw",              f32,  COLD)                    \
+    FIELD(EF_IS_GROUNDED,   "IsGrounded",       b8,   COLD)
 
 DECLARE_ARCHETYPE(Enemy, ENEMY_FIELDS)
 
