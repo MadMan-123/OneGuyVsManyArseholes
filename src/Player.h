@@ -50,7 +50,8 @@ extern "C" {
     FIELD(PF_AMMO_PISTOL,"AmmoPistol",      f32,  COLD)                       \
     FIELD(PF_AMMO_AK,    "AmmoAK",          f32,  COLD)                       \
     FIELD(PF_HAS_RELOADED,"HasReloaded",    b8,   COLD)                       \
-    FIELD(PF_IS_AIMING,  "IsAiming",       b8,   COLD)
+    FIELD(PF_IS_AIMING,  "IsAiming",       b8,   COLD)                       \
+    FIELD(PF_HEALTH_ID,  "HealthID",       u32,  COLD)
 
 DECLARE_ARCHETYPE(Player, PLAYER_FIELDS)
 

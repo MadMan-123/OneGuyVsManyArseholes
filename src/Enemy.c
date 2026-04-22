@@ -10,7 +10,6 @@ DEFINE_ARCHETYPE(Enemy, ENEMY_FIELDS)
 #define ENEMY_HALF_Z      0.30f
 #define ENEMY_MASS        70.0f
 #define ENEMY_DAMPING     6.0f
-#define ENEMY_HEALTH_MAX  100.0f
 #define ENEMY_VISION_RANGE 25.0f
 #define ENEMY_VISION_FOV_DEG 110.0f
 #define ENEMY_HEARING_RANGE 12.0f
@@ -36,14 +35,14 @@ void enemyInit(Archetype *arch)
     }
 }
 
-b8 enemySpawnAt(Vec3 position)
+u32 enemySpawnAt(Vec3 position)
 {
-    if (!s_arch) { WARN("enemySpawnAt: archetype not initialised"); return false; }
+    if (!s_arch) { WARN("enemySpawnAt: archetype not initialised"); return (u32)-1; }
 
     u32 poolIdx = 0, i = 0;
     void **fields = NULL;
     if (!archetypePoolSpawnFields(s_arch, &poolIdx, &i, &fields))
-    { WARN("enemySpawnAt: pool spawn failed (pool full?)"); return false; }
+    { WARN("enemySpawnAt: pool spawn failed (pool full?)"); return (u32)-1; }
     INFO("enemySpawnAt: spawned poolIdx=%u localIdx=%u modelID=%u", poolIdx, i, s_modelID);
 
     ((f32  *)fields[EF_POS_X])[i]       = position.x;
@@ -71,8 +70,8 @@ b8 enemySpawnAt(Vec3 position)
     ((u32  *)fields[EF_STATE])[i]        = AI_STATE_IDLE;
     ((u32  *)fields[EF_PREV_STATE])[i]   = AI_STATE_IDLE;
     ((f32  *)fields[EF_STATE_TIMER])[i]  = 0.0f;
-    ((f32  *)fields[EF_HEALTH])[i]       = ENEMY_HEALTH_MAX;
-    ((f32  *)fields[EF_HEALTH_MAX])[i]   = ENEMY_HEALTH_MAX;
+    ((u32  *)fields[EF_HEALTH_ID])[i]    = (u32)-1;  // caller registers health after spawn
+    ((f32  *)fields[EF_ATTACK_CD])[i]   = 0.0f;
     ((f32  *)fields[EF_VISION_RANGE])[i] = ENEMY_VISION_RANGE;
     ((f32  *)fields[EF_VISION_COS])[i]   = cosf(radians(ENEMY_VISION_FOV_DEG * 0.5f));
     ((f32  *)fields[EF_HEARING])[i]      = ENEMY_HEARING_RANGE;
@@ -85,7 +84,7 @@ b8 enemySpawnAt(Vec3 position)
     ((f32  *)fields[EF_WANDER_TIMER])[i]  = 0.0f;        // sample new target immediately
     ((f32  *)fields[EF_YAW])[i]           = 0.0f;
     ((b8   *)fields[EF_IS_GROUNDED])[i]  = false;
-    return true;
+    return poolIdx;
 }
 
 void enemyUpdate(Archetype *arch, f32 dt)

@@ -39,8 +39,8 @@ extern "C" {
     FIELD(EF_STATE,        "AIState",          u32,  COLD)                    \
     FIELD(EF_PREV_STATE,   "AIPrevState",      u32,  COLD)                    \
     FIELD(EF_STATE_TIMER,  "AIStateTimer",     f32,  COLD)                    \
-    FIELD(EF_HEALTH,       "Health",           f32,  COLD)                    \
-    FIELD(EF_HEALTH_MAX,   "HealthMax",        f32,  COLD)                    \
+    FIELD(EF_HEALTH_ID,    "HealthID",         u32,  COLD)                    \
+    FIELD(EF_ATTACK_CD,    "AttackCooldown",   f32,  COLD)                    \
     FIELD(EF_VISION_RANGE, "VisionRange",      f32,  COLD)                    \
     FIELD(EF_VISION_COS,   "VisionFovCos",     f32,  COLD)                    \
     FIELD(EF_HEARING,      "HearingRange",     f32,  COLD)                    \
@@ -59,7 +59,7 @@ DECLARE_ARCHETYPE(Enemy, ENEMY_FIELDS)
 DSAPI void enemyInit(Archetype *arch);
 DSAPI void enemyUpdate(Archetype *arch, f32 dt);
 DSAPI void enemyDestroy(void);
-DSAPI b8   enemySpawnAt(Vec3 position);
+DSAPI u32  enemySpawnAt(Vec3 position);   // returns poolIdx, (u32)-1 on failure
 DSAPI Archetype *enemyGetArchetype(void);
 
 #ifdef __cplusplus

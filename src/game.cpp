@@ -3,7 +3,9 @@
 #include "Bullet.h"
 #include "Gun.h"
 #include "Enemy.h"
+#include "Collisions.h"
 #include "AISpawn.h"
+#include <math.h>
 
 Archetype g_playerArch = {0};
 Archetype g_bulletArch = {0};
@@ -14,6 +16,116 @@ static b8        g_bulletCreated = false;
 static b8        g_gunCreated    = false;
 static b8        g_enemyCreated  = false;
 static b8        g_aiSpawned     = false;
+
+static b8 segmentVsAABB(f32 sx, f32 sy, f32 sz,
+                         f32 ex, f32 ey, f32 ez,
+                         f32 cx, f32 cy, f32 cz,
+                         f32 hx, f32 hy, f32 hz)
+{
+    f32 tMin = 0.0f, tMax = 1.0f;
+    f32 d, t1, t2, tmp;
+#define SLAB(S,E,C,H)                                           \
+    d = (E)-(S);                                                \
+    if (fabsf(d) < 1e-9f) {                                     \
+        if ((S) < (C)-(H) || (S) > (C)+(H)) return false;      \
+    } else {                                                     \
+        t1 = ((C)-(H)-(S))/d; t2 = ((C)+(H)-(S))/d;           \
+        if (t1 > t2) { tmp=t1; t1=t2; t2=tmp; }                \
+        if (t1 > tMin) tMin = t1;                               \
+        if (t2 < tMax) tMax = t2;                               \
+        if (tMin > tMax) return false;                          \
+    }
+    SLAB(sx, ex, cx, hx)
+    SLAB(sy, ey, cy, hy)
+    SLAB(sz, ez, cz, hz)
+#undef SLAB
+    return true;
+}
+
+static void bulletHitScan(f32 dt)
+{
+    for (u32 bc = 0; bc < g_bulletArch.activeChunkCount; bc++)
+    {
+        void **bf = getArchetypeFields(&g_bulletArch, bc);
+        if (!bf) continue;
+        u32 bCount = g_bulletArch.arena[bc].count;
+
+        b8  *bAlive = (b8  *)bf[BF_ALIVE];
+        f32 *bPosX  = (f32 *)bf[BF_POS_X];
+        f32 *bPosY  = (f32 *)bf[BF_POS_Y];
+        f32 *bPosZ  = (f32 *)bf[BF_POS_Z];
+        f32 *bVelX  = (f32 *)bf[BF_VEL_X];
+        f32 *bVelY  = (f32 *)bf[BF_VEL_Y];
+        f32 *bVelZ  = (f32 *)bf[BF_VEL_Z];
+        f32 *bSphR  = (f32 *)bf[BF_SPHERE_R];
+
+        for (u32 bi = 0; bi < bCount; bi++)
+        {
+            if (!bAlive[bi]) continue;
+
+            f32 sx = bPosX[bi], sy = bPosY[bi], sz = bPosZ[bi];
+            f32 ex = sx + bVelX[bi] * dt;
+            f32 ey = sy + bVelY[bi] * dt;
+            f32 ez = sz + bVelZ[bi] * dt;
+            f32 br = bSphR[bi];
+
+            u32 hitChunk = (u32)-1, hitLocal = (u32)-1;
+
+            for (u32 ec = 0; ec < g_enemyArch.activeChunkCount && hitChunk == (u32)-1; ec++)
+            {
+                void **ef = getArchetypeFields(&g_enemyArch, ec);
+                if (!ef) continue;
+                u32 eCount = g_enemyArch.arena[ec].count;
+
+                b8  *eAlive = (b8  *)ef[EF_ALIVE];
+                f32 *ePosX  = (f32 *)ef[EF_POS_X];
+                f32 *ePosY  = (f32 *)ef[EF_POS_Y];
+                f32 *ePosZ  = (f32 *)ef[EF_POS_Z];
+                f32 *eHX    = (f32 *)ef[EF_HALF_X];
+                f32 *eHY    = (f32 *)ef[EF_HALF_Y];
+                f32 *eHZ    = (f32 *)ef[EF_HALF_Z];
+
+                for (u32 ei = 0; ei < eCount; ei++)
+                {
+                    if (!eAlive[ei]) continue;
+                    if (segmentVsAABB(sx, sy, sz, ex, ey, ez,
+                                      ePosX[ei], ePosY[ei], ePosZ[ei],
+                                      eHX[ei] + br, eHY[ei] + br, eHZ[ei] + br))
+                    {
+                        hitChunk = ec;
+                        hitLocal = ei;
+                        break;
+                    }
+                }
+            }
+
+            if (hitChunk != (u32)-1)
+            {
+                archetypePoolDespawn(&g_bulletArch, bc * g_bulletArch.chunkCapacity + bi);
+                void **ef = getArchetypeFields(&g_enemyArch, hitChunk);
+                if (ef)
+                {
+                    HealthID hid = ((u32 *)ef[EF_HEALTH_ID])[hitLocal];
+                    damageEnqueue(&g_damageQueue, hid, BULLET_DAMAGE);
+                }
+            }
+        }
+    }
+}
+
+static void spawnAndRegisterEnemy(Vec3 pos)
+{
+    u32 poolIdx = enemySpawnAt(pos);
+    if (poolIdx == (u32)-1) return;
+
+    HealthID hid = healthRegister(&g_healthManager, 100.0f);
+    if (hid == HEALTH_ID_INVALID) return;
+
+    u32 chunkIdx = poolIdx / g_enemyArch.chunkCapacity;
+    u32 localIdx = poolIdx % g_enemyArch.chunkCapacity;
+    void **fields = getArchetypeFields(&g_enemyArch, chunkIdx);
+    if (fields) ((u32 *)fields[EF_HEALTH_ID])[localIdx] = (u32)hid;
+}
 
 static void setupPlayer(void)
 {
@@ -43,11 +155,13 @@ static void setupPlayer(void)
         ((f32  *)fields[PF_HALF_X])[0]      = 0.4f;
         ((f32  *)fields[PF_HALF_Y])[0]      = 0.9f;
         ((f32  *)fields[PF_HALF_Z])[0]      = 0.4f;
-        // Start with pistol equipped and loaded
-        ((u32  *)fields[PF_WEAPON])[0]         = 0; // WEAPON_PISTOL
+        ((u32  *)fields[PF_WEAPON])[0]         = 0;
         ((f32  *)fields[PF_AMMO_PISTOL])[0]    = 9.0f;
         ((f32  *)fields[PF_AMMO_AK])[0]        = 30.0f;
         ((b8   *)fields[PF_HAS_RELOADED])[0]   = true;
+
+        HealthID hid = healthRegister(&g_healthManager, 100.0f);
+        ((u32  *)fields[PF_HEALTH_ID])[0]    = (u32)hid;
     }
     playerInit();
 }
@@ -61,6 +175,10 @@ static void setupBullets(void)
     if (!createArchetype(&Bullet_layout, 256, &g_bulletArch))
     { ERROR("Failed to create Bullet archetype"); return; }
     g_bulletCreated = true;
+
+    // Triggers pass through enemies without impulse response.
+    // Damage is handled by bulletHitScan (swept segment), not physics callbacks.
+    archetypeSetTrigger(&g_bulletArch, true);
 
     bulletInit(&g_bulletArch);
 }
@@ -90,6 +208,12 @@ static void setupEnemy(void)
     { ERROR("Failed to create Enemy archetype"); return; }
     g_enemyCreated = true;
 
+    {
+        CollisionCallbacks cbs = {};
+        cbs.onCollideEnter = onEnemyCollideEnter;
+        archetypeSetCollisionCallbacks(&g_enemyArch, cbs);
+    }
+
     enemyInit(&g_enemyArch);
 }
 
@@ -97,35 +221,69 @@ static void gameInit(const c8 *projectDir)
 {
     runtimeCreate(projectDir, runtimeDefaultConfig());
 
+    collisionsInit();
+
     setupGun();
     setupBullets();
     setupEnemy();
     setupPlayer();
-    
+
     runtimeRegisterArchetype(runtime, &g_bulletArch);
     runtimeRegisterArchetype(runtime, &g_enemyArch);
     runtimeRegisterArchetype(runtime, &g_playerArch);
-    
+
     setMouseCaptured(true);
+}
+
+static void despawnDeadEnemies(void)
+{
+    for (u32 c = 0; c < g_enemyArch.activeChunkCount; c++)
+    {
+        void **fields = getArchetypeFields(&g_enemyArch, c);
+        if (!fields) continue;
+        u32 count = g_enemyArch.arena[c].count;
+        b8  *alive    = (b8  *)fields[EF_ALIVE];
+        u32 *healthId = (u32 *)fields[EF_HEALTH_ID];
+        for (u32 i = 0; i < count; i++)
+        {
+            if (!alive[i]) continue;
+            HealthID hid = (HealthID)healthId[i];
+            if (hid == HEALTH_ID_INVALID) continue;
+            if (!healthIsAlive(&g_healthManager, hid))
+            {
+                u32 poolIdx = c * g_enemyArch.chunkCapacity + i;
+                archetypePoolDespawn(&g_enemyArch, poolIdx);
+                INFO("Enemy %u died (poolIdx=%u)", i, poolIdx);
+            }
+        }
+    }
 }
 
 static void gameUpdate(f32 dt)
 {
-    // Spawn a few test enemies once at startup
     if (!g_aiSpawned && g_enemyCreated)
     {
-        // Y = ENEMY_HALF_Y + small clearance so they land on Y=0 ground without penetration
-        enemySpawnAt((Vec3){ 5.0f, 1.0f,  5.0f});
-        enemySpawnAt((Vec3){-5.0f, 1.0f, -5.0f});
-        enemySpawnAt((Vec3){10.0f, 1.0f,  0.0f});
+        spawnAndRegisterEnemy((Vec3){ 5.0f, 1.0f,  5.0f});
+        spawnAndRegisterEnemy((Vec3){-5.0f, 1.0f, -5.0f});
+        spawnAndRegisterEnemy((Vec3){10.0f, 1.0f,  0.0f});
         g_aiSpawned = true;
         INFO("Test enemies spawned!");
     }
 
     if (g_playerCreated) playerUpdate(&g_playerArch, dt);
     if (g_bulletCreated) bulletUpdate(&g_bulletArch, dt);
-    if (g_enemyCreated) enemyUpdate(&g_enemyArch, dt);
+    if (g_enemyCreated)  enemyUpdate(&g_enemyArch, dt);
+
+    // Swept bullet→enemy hit detection (bypasses physics for tunneling-proof results)
+    if (g_bulletCreated && g_enemyCreated) bulletHitScan(dt);
+
     runtimeUpdate(runtime, dt);
+
+    // Apply queued damage from collision callbacks
+    damageFlush(&g_damageQueue, &g_healthManager);
+
+    // Remove enemies whose health hit 0
+    if (g_enemyCreated) despawnDeadEnemies();
 }
 
 static void gameRender(f32 dt)

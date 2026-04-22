@@ -2,6 +2,7 @@
 #include "AISteering.h"
 #include "Enemy.h"
 #include "Player.h"
+#include "Collisions.h"
 #include "game.h"
 #include <math.h>
 
@@ -116,8 +117,8 @@ void aiBrainTick(Archetype *arch, f32 dt)
         u32  *state    = (u32 *)fields[EF_STATE];
         u32  *prev     = (u32 *)fields[EF_PREV_STATE];
         f32  *sTimer   = (f32 *)fields[EF_STATE_TIMER];
-        f32  *health   = (f32 *)fields[EF_HEALTH];
-        f32  *healthMx = (f32 *)fields[EF_HEALTH_MAX];
+        u32  *healthId = (u32 *)fields[EF_HEALTH_ID];
+        f32  *atkCd    = (f32 *)fields[EF_ATTACK_CD];
         f32  *visR     = (f32 *)fields[EF_VISION_RANGE];
         f32  *visCos   = (f32 *)fields[EF_VISION_COS];
         f32  *hearR    = (f32 *)fields[EF_HEARING];
@@ -134,6 +135,8 @@ void aiBrainTick(Archetype *arch, f32 dt)
         for (u32 i = 0; i < count; i++)
         {
             if (!alive[i]) continue;
+
+            if (atkCd[i] > 0.0f) atkCd[i] -= dt;
 
             Vec3 ePos = { posX[i], posY[i], posZ[i] };
             Vec3 eVel = { velX[i], velY[i], velZ[i] };
@@ -177,7 +180,8 @@ void aiBrainTick(Archetype *arch, f32 dt)
             }
 
             // --- utility scoring
-            f32 hpFrac = (healthMx[i] > 0.01f) ? (health[i] / healthMx[i]) : 1.0f;
+            f32 hp = healthGet(&g_healthManager, (HealthID)healthId[i]);
+            f32 hpFrac = (healthId[i] != (u32)-1) ? (hp / 100.0f) : 1.0f;
             f32 sawRecently = 1.0f - smoothstep01(0.0f, 8.0f, lsAge[i]);
 
             f32 uIdle   = 1.0f - (sees ? 1.0f : (hears ? 0.5f : sawRecently));
