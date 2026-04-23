@@ -301,11 +301,8 @@ void playerUpdate(Archetype *arch, f32 dt)
             cam->orientation = Rot[0];
 
             f32 targetFov = IsAiming[0] ? FOV_ADS : FOV_NORMAL;
-            if (targetFov != s_currentFov)
-            {
-                cameraSetFov(cam, targetFov);
-                s_currentFov = targetFov;
-            }
+            s_currentFov = lerp(s_currentFov, targetFov, clamp(FOV_LERP_SPEED * dt, 0.0f, 1.0f));
+            cameraSetFov(cam, s_currentFov);
         }
     }
 }

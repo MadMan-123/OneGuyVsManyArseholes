@@ -5,12 +5,6 @@
 #define WEAPON_PISTOL  0
 #define WEAPON_AK47    1
 
-#define GUN_HIP_X  0.30f
-#define GUN_HIP_Y -0.20f
-#define GUN_HIP_Z -0.50f
-#define GUN_ADS_X  0.00f
-#define GUN_ADS_Y -0.10f
-#define GUN_ADS_Z -0.60f
 
 #ifdef __cplusplus
 extern "C" {

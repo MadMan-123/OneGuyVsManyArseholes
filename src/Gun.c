@@ -1,5 +1,6 @@
 #include "Gun.h"
 #include "Player.h"
+#include "GameConfig.h"
 #include "game.h"
 
 
@@ -10,8 +11,9 @@
 
 DEFINE_ARCHETYPE(Gun, GUN_FIELDS)
 
-static u32 s_cachedModelIDs[2];
-static b8  s_modelsCached = false;
+static u32  s_cachedModelIDs[2];
+static b8   s_modelsCached = false;
+static Vec3 s_gunOffset    = {GUN_HIP_X, GUN_HIP_Y, GUN_HIP_Z};
 
 void gunInit(Archetype *arch)
 {
@@ -21,7 +23,6 @@ void gunInit(Archetype *arch)
 
 void gunUpdate(Archetype *arch, f32 dt)
 {
-    (void)dt;
     if (!arch || arch->arena[0].count < 2) return;
 
     void **pf = getArchetypeFields(&g_playerArch, 0);
@@ -53,10 +54,14 @@ void gunUpdate(Archetype *arch, f32 dt)
     u32 active = weapon ? weapon[0] : 0;  // WEAPON_PISTOL=0, WEAPON_AK47=1
 
     Vec3 eyePos = {posX[0], posY[0] + EYE_HEIGHT, posZ[0]};
-    Vec3 offset = (isAiming && isAiming[0])
+    Vec3 target = (isAiming && isAiming[0])
                       ? (Vec3){GUN_ADS_X, GUN_ADS_Y, GUN_ADS_Z}
                       : (Vec3){GUN_HIP_X, GUN_HIP_Y, GUN_HIP_Z};
-    Vec3 gunPos = v3Add(eyePos, quatRotateVec3(rot[0], offset));
+    f32 t = clamp(ADS_LERP_SPEED * dt, 0.0f, 1.0f);
+    s_gunOffset.x = lerp(s_gunOffset.x, target.x, t);
+    s_gunOffset.y = lerp(s_gunOffset.y, target.y, t);
+    s_gunOffset.z = lerp(s_gunOffset.z, target.z, t);
+    Vec3 gunPos = v3Add(eyePos, quatRotateVec3(rot[0], s_gunOffset));
 
     gX[GUN_IDX_PISTOL]   = gunPos.x;
     gY[GUN_IDX_PISTOL]   = gunPos.y;
@@ -78,6 +83,7 @@ void gunUpdate(Archetype *arch, f32 dt)
 void gunDestroy(void)
 {
     s_modelsCached = false;
+    s_gunOffset    = (Vec3){GUN_HIP_X, GUN_HIP_Y, GUN_HIP_Z};
 }
 
 static void gunInitPlugin(void) {}

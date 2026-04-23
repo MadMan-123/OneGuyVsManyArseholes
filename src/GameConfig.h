@@ -48,6 +48,24 @@
 #define ENEMY_MELEE_CD           1.0f   // seconds between enemy melee hits
 
 // =============================================================================
+// GUN POSITIONING & ADS
+// =============================================================================
+
+// Hip-fire gun offset (relative to eye, in camera space)
+#define GUN_HIP_X  0.30f
+#define GUN_HIP_Y -0.20f
+#define GUN_HIP_Z -0.50f
+
+// ADS gun offset (relative to eye, in camera space)
+#define GUN_ADS_X  0.00f
+#define GUN_ADS_Y -0.10f
+#define GUN_ADS_Z -0.60f
+
+// Lerp speeds for ADS transitions
+#define ADS_LERP_SPEED  10.0f
+#define FOV_LERP_SPEED   8.0f
+
+// =============================================================================
 // WEAPONS
 // =============================================================================
 
