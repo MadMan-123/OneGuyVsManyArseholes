@@ -132,6 +132,7 @@ static void playerShoot(u32 *Weapon, f32 *FirCD, f32 *Spread, f32 *RecoilR, f32 
         ReloadCD[0] = 0.0f;
         if (Weapon[0] == WEAPON_PISTOL) AmmoPistol[0] = PISTOL_CLIP_SIZE;
         if (Weapon[0] == WEAPON_AK47)   AmmoAK[0]     = AK_CLIP_SIZE;
+        if (Weapon[0] == WEAPON_SUOMI)  AmmoSuomi[0]  = SUOMI_CLIP_SIZE;
         HasReloaded[0] = true;
     }
 
