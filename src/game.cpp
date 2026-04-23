@@ -1,12 +1,11 @@
 #include "game.h"
+#include "GameConfig.h"
 #include "Player.h"
 #include "Bullet.h"
 #include "Gun.h"
 #include "Enemy.h"
 #include "Collisions.h"
 #include "AISpawn.h"
-#include <math.h>
-
 Archetype g_playerArch = {0};
 Archetype g_bulletArch = {0};
 Archetype g_gunArch    = {0};
@@ -18,122 +17,21 @@ static b8        g_enemyCreated  = false;
 
 // ── Wave system ──────────────────────────────────────────────────────────────
 #define MAX_SPAWN_POINTS 64
-#define SPAWN_INTERVAL   1.5f    // seconds between individual spawns
 
 static Vec3 g_spawnPoints[MAX_SPAWN_POINTS];
 static u32  g_spawnPointCount  = 0;
 static b8   g_spawnPointsReady = false;
 static u32  g_killCount  = 0;
-static u32  g_maxEnemies = 2;
+static u32  g_maxEnemies = WAVE_INITIAL_CAP;
 static f32  g_spawnTimer = 0.0f;
 static u32  g_nextSpawn  = 0;
-
-static b8 segmentVsAABB(f32 sx, f32 sy, f32 sz,
-                         f32 ex, f32 ey, f32 ez,
-                         f32 cx, f32 cy, f32 cz,
-                         f32 hx, f32 hy, f32 hz)
-{
-    f32 tMin = 0.0f, tMax = 1.0f;
-    f32 d, t1, t2, tmp;
-#define SLAB(S,E,C,H)                                           \
-    d = (E)-(S);                                                \
-    if (fabsf(d) < 1e-9f) {                                     \
-        if ((S) < (C)-(H) || (S) > (C)+(H)) return false;      \
-    } else {                                                     \
-        t1 = ((C)-(H)-(S))/d; t2 = ((C)+(H)-(S))/d;           \
-        if (t1 > t2) { tmp=t1; t1=t2; t2=tmp; }                \
-        if (t1 > tMin) tMin = t1;                               \
-        if (t2 < tMax) tMax = t2;                               \
-        if (tMin > tMax) return false;                          \
-    }
-    SLAB(sx, ex, cx, hx)
-    SLAB(sy, ey, cy, hy)
-    SLAB(sz, ez, cz, hz)
-#undef SLAB
-    return true;
-}
-
-static void bulletHitScan(f32 dt)
-{
-    for (u32 bc = 0; bc < g_bulletArch.activeChunkCount; bc++)
-    {
-        void **bf = getArchetypeFields(&g_bulletArch, bc);
-        if (!bf) continue;
-        u32 bCount = g_bulletArch.arena[bc].count;
-
-        b8  *bAlive = (b8  *)bf[BF_ALIVE];
-        f32 *bPosX  = (f32 *)bf[BF_POS_X];
-        f32 *bPosY  = (f32 *)bf[BF_POS_Y];
-        f32 *bPosZ  = (f32 *)bf[BF_POS_Z];
-        f32 *bVelX  = (f32 *)bf[BF_VEL_X];
-        f32 *bVelY  = (f32 *)bf[BF_VEL_Y];
-        f32 *bVelZ  = (f32 *)bf[BF_VEL_Z];
-        f32 *bSphR  = (f32 *)bf[BF_SPHERE_R];
-
-        for (u32 bi = 0; bi < bCount; bi++)
-        {
-            if (!bAlive[bi]) continue;
-
-            f32 sx = bPosX[bi], sy = bPosY[bi], sz = bPosZ[bi];
-            f32 ex = sx + bVelX[bi] * dt;
-            f32 ey = sy + bVelY[bi] * dt;
-            f32 ez = sz + bVelZ[bi] * dt;
-            f32 br = bSphR[bi];
-
-            u32 hitChunk = (u32)-1, hitLocal = (u32)-1;
-
-            for (u32 ec = 0; ec < g_enemyArch.activeChunkCount && hitChunk == (u32)-1; ec++)
-            {
-                void **ef = getArchetypeFields(&g_enemyArch, ec);
-                if (!ef) continue;
-                u32 eCount = g_enemyArch.arena[ec].count;
-
-                b8  *eAlive  = (b8  *)ef[EF_ALIVE];
-                f32 *ePosX   = (f32 *)ef[EF_POS_X];
-                f32 *ePosY   = (f32 *)ef[EF_POS_Y];
-                f32 *ePosZ   = (f32 *)ef[EF_POS_Z];
-                f32 *eOffY   = (f32 *)ef[EF_COLLIDER_OFFSET_Y];
-                f32 *eHX     = (f32 *)ef[EF_HALF_X];
-                f32 *eHY     = (f32 *)ef[EF_HALF_Y];
-                f32 *eHZ     = (f32 *)ef[EF_HALF_Z];
-
-                for (u32 ei = 0; ei < eCount; ei++)
-                {
-                    if (!eAlive[ei]) continue;
-                    f32 cy = ePosY[ei] + (eOffY ? eOffY[ei] : 0.0f);
-                    if (segmentVsAABB(sx, sy, sz, ex, ey, ez,
-                                      ePosX[ei], cy, ePosZ[ei],
-                                      eHX[ei] + br, eHY[ei] + br, eHZ[ei] + br))
-                    {
-                        hitChunk = ec;
-                        hitLocal = ei;
-                        break;
-                    }
-                }
-            }
-
-            if (hitChunk != (u32)-1)
-            {
-                archetypePoolDespawn(&g_bulletArch, bc * g_bulletArch.chunkCapacity + bi);
-                void **ef = getArchetypeFields(&g_enemyArch, hitChunk);
-                if (ef)
-                {
-                    HealthID hid = ((u32 *)ef[EF_HEALTH_ID])[hitLocal];
-                    damageEnqueue(&g_damageQueue, hid, BULLET_DAMAGE);
-                }
-            }
-        }
-    }
-}
-
-#define ENEMY_MAX_HP 50.0f
 
 static void spawnAndRegisterEnemy(Vec3 pos)
 {
     u32 poolIdx = enemySpawnAt(pos);
     if (poolIdx == (u32)-1) return;
 
-    HealthID hid = healthRegister(&g_healthManager, ENEMY_MAX_HP);
+    HealthID hid = healthRegister(&g_healthManager, ENEMY_START_HP);
     if (hid == HEALTH_ID_INVALID) return;
 
     u32 chunkIdx = poolIdx / g_enemyArch.chunkCapacity;
@@ -157,18 +55,21 @@ static u32 countLiveEnemies(void)
     return live;
 }
 
-// Max live enemies as a function of total kills:
-//   kills  0-9  : starts at 2, +1 every 3 kills
-//   kills 10-39 : +2 every 5 kills   (reaches ~15 at 39 kills)
-//   kills 40+   : +5 every 10 kills
+// Max live enemies as a function of total kills — all thresholds and caps are
+// controlled by the WAVE_* macros in GameConfig.h.
 static u32 maxEnemiesFromKills(u32 kills)
 {
-    if (kills < 10) return 2 + kills / 3;
-    if (kills < 40) return 5 + ((kills - 10) / 5) * 2;
-    return               17 + ((kills - 40) / 10) * 5;
+    u32 cap;
+    if (kills < WAVE_TIER1_KILLS)
+        cap = WAVE_INITIAL_CAP + (kills / WAVE_TIER0_STEP_SIZE) * WAVE_TIER0_STEP_ADD;
+    else if (kills < WAVE_TIER2_KILLS)
+        cap = WAVE_TIER1_CAP   + ((kills - WAVE_TIER1_KILLS) / WAVE_TIER1_STEP_SIZE) * WAVE_TIER1_STEP_ADD;
+    else
+        cap = WAVE_TIER2_CAP   + ((kills - WAVE_TIER2_KILLS) / WAVE_TIER2_STEP_SIZE) * WAVE_TIER2_STEP_ADD;
+    return cap < WAVE_MAX_CAP ? cap : WAVE_MAX_CAP;
 }
 
-// Refills enemies up to g_maxEnemies, one per SPAWN_INTERVAL seconds.
+// Refills enemies up to g_maxEnemies, one per WAVE_SPAWN_INTERVAL seconds.
 // Cycles through spawn points round-robin.
 static void waveUpdate(f32 dt)
 {
@@ -177,7 +78,7 @@ static void waveUpdate(f32 dt)
 
     g_spawnTimer -= dt;
     if (g_spawnTimer > 0.0f) return;
-    g_spawnTimer = SPAWN_INTERVAL;
+    g_spawnTimer = WAVE_SPAWN_INTERVAL;
 
     Vec3 pos = g_spawnPoints[g_nextSpawn % g_spawnPointCount];
     g_nextSpawn++;
@@ -213,11 +114,11 @@ static void setupPlayer(void)
         ((f32  *)fields[PF_HALF_Y])[0]      = 0.9f;
         ((f32  *)fields[PF_HALF_Z])[0]      = 0.4f;
         ((u32  *)fields[PF_WEAPON])[0]         = 0;
-        ((f32  *)fields[PF_AMMO_PISTOL])[0]    = 9.0f;
-        ((f32  *)fields[PF_AMMO_AK])[0]        = 30.0f;
+        ((f32  *)fields[PF_AMMO_PISTOL])[0]    = PISTOL_CLIP_SIZE;
+        ((f32  *)fields[PF_AMMO_AK])[0]        = AK_CLIP_SIZE;
         ((b8   *)fields[PF_HAS_RELOADED])[0]   = true;
 
-        HealthID hid = healthRegister(&g_healthManager, 100.0f);
+        HealthID hid = healthRegister(&g_healthManager, PLAYER_START_HP);
         ((u32  *)fields[PF_HEALTH_ID])[0]    = (u32)hid;
     }
     playerInit();
@@ -233,9 +134,11 @@ static void setupBullets(void)
     { ERROR("Failed to create Bullet archetype"); return; }
     g_bulletCreated = true;
 
-    // Triggers pass through enemies without impulse response.
-    // Damage is handled by bulletHitScan (swept segment), not physics callbacks.
-    archetypeSetTrigger(&g_bulletArch, true);
+    {
+        CollisionCallbacks cbs = {};
+        cbs.onCollideEnter = onBulletCollideEnter;
+        archetypeSetCollisionCallbacks(&g_bulletArch, cbs);
+    }
 
     bulletInit(&g_bulletArch);
 }
@@ -324,8 +227,6 @@ static void gameUpdate(f32 dt)
     if (g_bulletCreated) bulletUpdate(&g_bulletArch, dt);
     if (g_enemyCreated)  enemyUpdate(&g_enemyArch, dt);
 
-    if (g_bulletCreated && g_enemyCreated) bulletHitScan(dt);
-
     runtimeUpdate(runtime, dt);
 
     // Scene data is available after the first runtimeUpdate — retry every frame until scene is live.
@@ -340,6 +241,22 @@ static void gameUpdate(f32 dt)
     }
 
     damageFlush(&g_damageQueue, &g_healthManager);
+
+    // Player death check
+    static b8 s_playerDead = false;
+    if (!s_playerDead && g_playerCreated)
+    {
+        void **pf = getArchetypeFields(&g_playerArch, 0);
+        if (pf)
+        {
+            HealthID hid = (HealthID)((u32 *)pf[PF_HEALTH_ID])[0];
+            if (!healthIsAlive(&g_healthManager, hid))
+            {
+                s_playerDead = true;
+                DEBUG("PLAYER DIED");
+            }
+        }
+    }
 
     if (g_enemyCreated)
     {

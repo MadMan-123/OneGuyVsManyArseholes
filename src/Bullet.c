@@ -53,12 +53,13 @@ void bulletSpawn(Vec3 position, Vec3 direction, f32 speed)
     ((f32  *)fields[BF_MASS])[i]      = BULLET_MASS;
     ((f32  *)fields[BF_RESTITUTION])[i] = 0.0f;
     ((f32  *)fields[BF_DAMPING])[i]   = 0.0f;
-    ((f32  *)fields[BF_SPHERE_R])[i]  = BULLET_RADIUS;
-    ((f32  *)fields[BF_HALF_X])[i]    = BULLET_RADIUS;
-    ((f32  *)fields[BF_HALF_Y])[i]    = BULLET_RADIUS;
-    ((f32  *)fields[BF_HALF_Z])[i]    = BULLET_RADIUS;
+    ((f32  *)fields[BF_SPHERE_R])[i]   = BULLET_RADIUS;
+    ((f32  *)fields[BF_HALF_X])[i]    = 0.0f;
+    ((f32  *)fields[BF_HALF_Y])[i]    = 0.0f;
+    ((f32  *)fields[BF_HALF_Z])[i]    = 0.0f;
     ((f32  *)fields[BF_LIFETIME])[i]  = 0.0f;
     ((u32  *)fields[BF_MODEL_ID])[i]  = s_sphereModelID;
+    ((b8   *)fields[BF_CCD_ENABLED])[i] = true;
 }
 
 void bulletUpdate(Archetype *arch, f32 dt)

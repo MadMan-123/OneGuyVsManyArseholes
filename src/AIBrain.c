@@ -7,6 +7,7 @@
 #include <math.h>
 
 // --- tunables --------------------------------------------------------------
+#define MELEE_RANGE          1.8f   // metres — close enough to swing
 #define MAX_FORCE            400.0f
 #define MAX_SPEED_IDLE         1.5f
 #define MAX_SPEED_AGITATED     3.0f
@@ -329,6 +330,30 @@ void aiBrainTick(Archetype *arch, f32 dt)
             {
                 yawF[i] = atan2f(-faceDir.x, -faceDir.z);
                 rot[i] = quatFromAxisAngle(v3Up, yawF[i] + ZOMBIE_YAW_OFFSET);
+            }
+
+            // --- melee attack: range + raycast check
+            if (dist < MELEE_RANGE && atkCd[i] <= 0.0f && physicsWorld)
+            {
+                Vec3 toPlayer = v3Sub(eyeTarget, eye);
+                f32  toPlayerDist = v3Mag(toPlayer);
+                Vec3 toPlayerDir  = (toPlayerDist > 1e-4f)
+                    ? v3Scale(toPlayer, 1.0f / toPlayerDist) : v3Forward;
+
+                PhysRay ray = { eye, toPlayerDir, MELEE_RANGE + 0.5f, 0xFFFFFFFFu };
+                PhysRayHit rh = physRaycast(physicsWorld, ray);
+                b8 losClear = !rh.hit || rh.distance >= (toPlayerDist - 0.3f);
+
+                if (losClear)
+                {
+                    void **pf = getArchetypeFields(&g_playerArch, 0);
+                    if (pf)
+                    {
+                        HealthID phid = (HealthID)((u32 *)pf[PF_HEALTH_ID])[0];
+                        damageEnqueue(&g_damageQueue, phid, ENEMY_MELEE_DAMAGE);
+                    }
+                    atkCd[i] = ENEMY_MELEE_CD;
+                }
             }
         }
     }

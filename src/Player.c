@@ -1,5 +1,6 @@
 #include "Player.h"
 #include "Bullet.h"
+#include "GameConfig.h"
 #include "game.h"
 #include <stdlib.h>
 
@@ -34,23 +35,6 @@
 #define WEAPON_PISTOL  0
 #define WEAPON_AK47    1
 
-#define PISTOL_COOLDOWN     0.15f
-#define PISTOL_AMMO         9.0f
-#define PISTOL_RELOAD       1.8f
-#define PISTOL_SPEED        50.0f
-#define PISTOL_SPREAD_MAX   0.01f
-#define PISTOL_RECOIL       0.03f
-#define PISTOL_RECOIL_FIRST 0.035f
-
-#define AK_COOLDOWN        0.1f
-#define AK_AMMO            30.0f
-#define AK_RELOAD          3.1f
-#define AK_SPEED           70.0f
-#define AK_SPREAD_MAX      0.06f
-#define AK_SPREAD_RATE     0.012f
-#define AK_SPREAD_DECAY    0.08f
-#define AK_RECOIL          0.05f
-#define AK_RECOIL_FIRST    0.10f
 
 DEFINE_ARCHETYPE(Player, PLAYER_FIELDS)
 
@@ -138,15 +122,15 @@ static void playerShoot(u32 *Weapon, f32 *FirCD, f32 *Spread, f32 *RecoilR, f32 
     if (ReloadCD[0] <= 0.0f && !HasReloaded[0])
     {
         ReloadCD[0] = 0.0f;
-        if (Weapon[0] == WEAPON_PISTOL) AmmoPistol[0] = PISTOL_AMMO;
-        if (Weapon[0] == WEAPON_AK47)   AmmoAK[0]     = AK_AMMO;
+        if (Weapon[0] == WEAPON_PISTOL) AmmoPistol[0] = PISTOL_CLIP_SIZE;
+        if (Weapon[0] == WEAPON_AK47)   AmmoAK[0]     = AK_CLIP_SIZE;
         HasReloaded[0] = true;
     }
 
     // Manual reload
     if (isKeyDown(KEY_R) && HasReloaded[0])
     {
-        ReloadCD[0] = (Weapon[0] == WEAPON_AK47) ? AK_RELOAD : PISTOL_RELOAD;
+        ReloadCD[0] = (Weapon[0] == WEAPON_AK47) ? AK_RELOAD_TIME : PISTOL_RELOAD_TIME;
     }
 
     Vec2 triggers = getJoystickAxis(0, JOYSTICK_TRIGGER_LEFT, JOYSTICK_TRIGGER_RIGHT);
@@ -159,8 +143,8 @@ static void playerShoot(u32 *Weapon, f32 *FirCD, f32 *Spread, f32 *RecoilR, f32 
 
     if (canFire)
     {
-        f32 bulletSpeed  = (Weapon[0] == WEAPON_PISTOL) ? PISTOL_SPEED        : AK_SPEED;
-        f32 cooldown     = (Weapon[0] == WEAPON_PISTOL) ? PISTOL_COOLDOWN     : AK_COOLDOWN;
+        f32 bulletSpeed  = (Weapon[0] == WEAPON_PISTOL) ? PISTOL_BULLET_SPEED        : AK_BULLET_SPEED;
+        f32 cooldown     = (Weapon[0] == WEAPON_PISTOL) ? PISTOL_FIRE_RATE     : AK_FIRE_RATE;
         f32 recoilKick   = (Weapon[0] == WEAPON_PISTOL) ? PISTOL_RECOIL       : AK_RECOIL;
         f32 firstRecoil  = (Weapon[0] == WEAPON_PISTOL) ? PISTOL_RECOIL_FIRST : AK_RECOIL_FIRST;
 
@@ -195,13 +179,13 @@ static void playerShoot(u32 *Weapon, f32 *FirCD, f32 *Spread, f32 *RecoilR, f32 
             Spread[0] += AK_SPREAD_RATE;
             if (Spread[0] > AK_SPREAD_MAX) Spread[0] = AK_SPREAD_MAX;
             AmmoAK[0] -= 1.0f;
-            if (AmmoAK[0] <= 0.0f) ReloadCD[0] += AK_RELOAD;
+            if (AmmoAK[0] <= 0.0f) ReloadCD[0] += AK_RELOAD_TIME;
         }
         else
         {
             Spread[0] = PISTOL_SPREAD_MAX;
             AmmoPistol[0] -= 1.0f;
-            if (AmmoPistol[0] <= 0.0f) ReloadCD[0] += PISTOL_RELOAD;
+            if (AmmoPistol[0] <= 0.0f) ReloadCD[0] += PISTOL_RELOAD_TIME;
         }
     }
 
@@ -265,14 +249,14 @@ void playerUpdate(Archetype *arch, f32 dt)
     if ((isKeyDown(KEY_1) || isButtonDown(0, BUTTON_LEFTSHOULDER)) && Weapon[0] != WEAPON_PISTOL)
     {
         Weapon[0]      = WEAPON_PISTOL;
-        AmmoPistol[0]  = PISTOL_AMMO;
+        AmmoPistol[0]  = PISTOL_CLIP_SIZE;
         HasReloaded[0] = true;
         ReloadCD[0]    = 0.0f;
     }
     if ((isKeyDown(KEY_2) || isButtonDown(0, BUTTON_RIGHTSHOULDER)) && Weapon[0] != WEAPON_AK47)
     {
         Weapon[0]      = WEAPON_AK47;
-        AmmoAK[0]      = AK_AMMO;
+        AmmoAK[0]      = AK_CLIP_SIZE;
         HasReloaded[0] = true;
         ReloadCD[0]    = 0.0f;
     }
@@ -283,14 +267,14 @@ void playerUpdate(Archetype *arch, f32 dt)
         if (Weapon[0] == WEAPON_PISTOL)
         {
             Weapon[0]      = WEAPON_AK47;
-            AmmoAK[0]      = AK_AMMO;
+            AmmoAK[0]      = AK_CLIP_SIZE;
             HasReloaded[0] = true;
             ReloadCD[0]    = 0.0f;
         }
         else
         {
             Weapon[0]      = WEAPON_PISTOL;
-            AmmoPistol[0]  = PISTOL_AMMO;
+            AmmoPistol[0]  = PISTOL_CLIP_SIZE;
             HasReloaded[0] = true;
             ReloadCD[0]    = 0.0f;
         }

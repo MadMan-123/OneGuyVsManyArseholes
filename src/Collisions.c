@@ -15,6 +15,9 @@ void collisionsInit(void)
 // Called when a bullet touches anything (self = bullet entity)
 void onBulletCollideEnter(ContactInfo *info)
 {
+    // Guard against re-entry if the bullet was already despawned this step
+    if (!archetypePoolIsAlive(info->self.arch, info->self.poolIdx)) return;
+
     // Despawn the bullet
     archetypePoolDespawn(info->self.arch, info->self.poolIdx);
 

@@ -1,14 +1,11 @@
 #pragma once
 #include <druid.h>
 #include "Health.h"
+#include "GameConfig.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-#define ENEMY_MELEE_DAMAGE   10.0f
-#define ENEMY_MELEE_CD       1.0f   // seconds between melee hits
-#define BULLET_DAMAGE        25.0f
 
 DSAPI extern HealthManager g_healthManager;
 DSAPI extern DamageQueue   g_damageQueue;

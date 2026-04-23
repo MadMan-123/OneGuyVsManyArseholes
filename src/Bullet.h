@@ -28,7 +28,8 @@ extern "C" {
     FIELD(BF_HALF_Y,     "ColliderHalfY",    f32,  HOT)                      \
     FIELD(BF_HALF_Z,     "ColliderHalfZ",    f32,  HOT)                      \
     FIELD(BF_LIFETIME,   "Lifetime",         f32,  HOT)                      \
-    FIELD(BF_MODEL_ID,   "ModelID",          u32,  COLD)
+    FIELD(BF_MODEL_ID,   "ModelID",          u32,  COLD)                     \
+    FIELD(BF_CCD_ENABLED,"CCDEnabled",       b8,   COLD)
 
 DECLARE_ARCHETYPE(Bullet, BULLET_FIELDS)
 
