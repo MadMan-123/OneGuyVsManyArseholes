@@ -6,7 +6,6 @@
 
 #define EYE_HEIGHT 1.6f
 
-#define GUN_IDX_SUOMI  2
 #define GUN_IDX_PISTOL 1
 #define GUN_IDX_AK47   0
 
@@ -24,7 +23,7 @@ void gunInit(Archetype *arch)
 
 void gunUpdate(Archetype *arch, f32 dt)
 {
-    if (!arch || arch->arena[0].count < 3) return;
+    if (!arch || arch->arena[0].count < 2) return;
 
     void **pf = getArchetypeFields(&g_playerArch, 0);
     if (!pf) return;
@@ -49,11 +48,10 @@ void gunUpdate(Archetype *arch, f32 dt)
     {
         s_cachedModelIDs[0] = modelID[GUN_IDX_PISTOL];
         s_cachedModelIDs[1] = modelID[GUN_IDX_AK47];
-        s_cachedModelIDs[2] = modelID[GUN_IDX_SUOMI];
         s_modelsCached = true;
     }
 
-    u32 active = weapon ? weapon[0] : 0;  // WEAPON_PISTOL=0, WEAPON_AK47=1, WEAPON_SUOMI=2
+    u32 active = weapon ? weapon[0] : 0;  // WEAPON_PISTOL=0, WEAPON_AK47=1
 
     Vec3 eyePos = {posX[0], posY[0] + EYE_HEIGHT, posZ[0]};
     Vec3 target = (isAiming && isAiming[0])
@@ -75,16 +73,10 @@ void gunUpdate(Archetype *arch, f32 dt)
     gZ[GUN_IDX_AK47]   = gunPos.z;
     gRot[GUN_IDX_AK47] = rot[0];
 
-    gX[GUN_IDX_SUOMI]   = gunPos.x;
-    gY[GUN_IDX_SUOMI]   = gunPos.y;
-    gZ[GUN_IDX_SUOMI]   = gunPos.z;
-    gRot[GUN_IDX_SUOMI]= rot[0];
-
     if (modelID)
     {
         modelID[GUN_IDX_PISTOL] = (active == WEAPON_PISTOL) ? s_cachedModelIDs[0] : (u32)-1;
         modelID[GUN_IDX_AK47]   = (active == WEAPON_AK47)   ? s_cachedModelIDs[1] : (u32)-1;
-        modelID[GUN_IDX_SUOMI]  = (active == WEAPON_SUOMI)  ? s_cachedModelIDs[2] : (u32)-1;
     }
 }
 

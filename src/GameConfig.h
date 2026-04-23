@@ -88,14 +88,3 @@
 #define AK_SPREAD_DECAY          0.08f
 #define AK_RECOIL                0.05f
 #define AK_RECOIL_FIRST          0.10f
-
-// SUOMI
-#define SUOMI_FIRE_RATE             0.075f   // seconds between shots
-#define SUOMI_CLIP_SIZE             55.0f
-#define SUOMI_RELOAD_TIME           4.1f
-#define SUOMI_BULLET_SPEED          60.0f
-#define SUOMI_SPREAD_MAX            0.10f
-#define SUOMI_SPREAD_RATE           0.015f
-#define SUOMI_SPREAD_DECAY          0.09f
-#define SUOMI_RECOIL                0.06f
-#define SUOMI_RECOIL_FIRST          0.06f
