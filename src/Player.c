@@ -141,6 +141,9 @@ static void playerShoot(u32 *Weapon, f32 *FirCD, f32 *Spread, f32 *RecoilR, f32 
     if (HasReloaded[0] && (isKeyDown(KEY_R) || squareDown && !s_wasSquareDown))
     {
         ReloadCD[0] = (Weapon[0] == WEAPON_AK47) ? AK_RELOAD_TIME : PISTOL_RELOAD_TIME;
+        if (Weapon[0] == WEAPON_PISTOL) ReloadCD[0] == PISTOL_RELOAD_TIME;
+        else if (Weapon[0] == WEAPON_AK47) ReloadCD[0] == AK_RELOAD_TIME;
+        else if (Weapon[0] == WEAPON_SUOMI) ReloadCD[0] == SUOMI_RELOAD_TIME;
     }
     s_wasSquareDown = squareDown;
 
@@ -159,6 +162,28 @@ static void playerShoot(u32 *Weapon, f32 *FirCD, f32 *Spread, f32 *RecoilR, f32 
         f32 recoilKick   = (Weapon[0] == WEAPON_PISTOL) ? PISTOL_RECOIL       : AK_RECOIL;
         f32 firstRecoil  = (Weapon[0] == WEAPON_PISTOL) ? PISTOL_RECOIL_FIRST : AK_RECOIL_FIRST;
 
+        if (Weapon[0] == WEAPON_PISTOL)
+        {
+            f32 bulletSpeed = PISTOL_BULLET_SPEED;
+            f32 cooldown = PISTOL_FIRE_RATE;
+            f32 recoilKick = PISTOL_RECOIL;
+            f32 firstRecoil = PISTOL_RECOIL_FIRST;
+        }
+        else if (Weapon[0] == WEAPON_AK47)
+        {
+            f32 bulletSpeed = AK_BULLET_SPEED;
+            f32 cooldown = AK_FIRE_RATE;
+            f32 recoilKick = Ak_RECOIL;
+            f32 firstRecoil = AK_RECOIL_FIRST;
+        }
+        else if (Weapon[0] == WEAPON_SUOMI)
+        {
+            f32 bulletSpeed = SUOMI_BULLET_SPEED;
+            f32 cooldown = SUOMI_FIRE_RATE;
+            f32 recoilKick = SUOMI_RECOIL;
+            f32 firstRecoil = SUOMI_RECOIL_FIRST;
+        }
+
         f32 spreadX = Spread[0] * ((f32)(rand() % 2001 - 1000) / 1000.0f);
         f32 spreadY = Spread[0] * ((f32)(rand() % 2001 - 1000) / 1000.0f);
         Vec3 dir = v3Norm((Vec3){
@@ -171,10 +196,12 @@ static void playerShoot(u32 *Weapon, f32 *FirCD, f32 *Spread, f32 *RecoilR, f32 
         static const Vec3 muzzleHip[2] = {
             {MUZZLE_PISTOL_HIP_X, MUZZLE_PISTOL_HIP_Y, MUZZLE_PISTOL_HIP_Z},
             {MUZZLE_AK_HIP_X,     MUZZLE_AK_HIP_Y,     MUZZLE_AK_HIP_Z},
+            {MUZZLE_SUOMI_HIP_X, MUZZLE_SUOMI_HIP_Y, MUZZLE_SUOMI_HIP_Z},
         };
         static const Vec3 muzzleADS[2] = {
             {MUZZLE_PISTOL_ADS_X, MUZZLE_PISTOL_ADS_Y, MUZZLE_PISTOL_ADS_Z},
             {MUZZLE_AK_ADS_X,     MUZZLE_AK_ADS_Y,     MUZZLE_AK_ADS_Z},
+            {MUZZLE_SUOMI_ADS_X, MUZZLE_SUOMI_ADS_Y, MUZZLE_SUOMI_ADS_Z},
         };
         const Vec3 *muzzleTable = isAiming ? muzzleADS : muzzleHip;
         Vec3 spawnPos = v3Add(eyePos, quatRotateVec3(Rot[0], muzzleTable[Weapon[0]]));
@@ -192,17 +219,30 @@ static void playerShoot(u32 *Weapon, f32 *FirCD, f32 *Spread, f32 *RecoilR, f32 
             AmmoAK[0] -= 1.0f;
             if (AmmoAK[0] <= 0.0f) ReloadCD[0] += AK_RELOAD_TIME;
         }
-        else
+        else if (Weapon[0] == WEAPON_PISTOL)
         {
             Spread[0] = PISTOL_SPREAD_MAX;
             AmmoPistol[0] -= 1.0f;
             if (AmmoPistol[0] <= 0.0f) ReloadCD[0] += PISTOL_RELOAD_TIME;
         }
+        else if (Weapon[0] == WEAPON_SUOMI)
+        {
+            Spread[0] = SUOMI_SPREAD_MAX;
+            AmmoSuomi[0] -= 1.0f;
+            if (AmmoPistol[0] <= 0.0f) ReloadCD[0] += SUOMI_RELOAD_TIME;
+        }
     }
 
     if (!fireDown && Spread[0] > 0.0f)
     {
-        Spread[0] -= AK_SPREAD_DECAY * dt;
+        if (Weapon[0] == WEAPON_AK47)
+        {
+            Spread[0] -= AK_SPREAD_DECAY * dt;
+        }
+        else if (Weapon[0] == WEAPON_SUOMI)
+        {
+            Spread[0] -= SUOMI_SPREAD_DECAY * dt;
+        }
         if (Spread[0] < 0.0f) Spread[0] = 0.0f;
     }
 
@@ -275,6 +315,12 @@ void playerUpdate(Archetype *arch, f32 dt)
     b8 yDown = isButtonDown(0, BUTTON_Y);
     if (yDown && !s_wasYDown)
     {
+        u32 currentWeapon = Weapon[0];
+        if (currentWeapon < NUM_WEAPONS) currentWeapon += 1;
+        else currentWeapon = 0;
+
+
+
         if (Weapon[0] == WEAPON_PISTOL)
         {
             Weapon[0]      = WEAPON_AK47;
@@ -282,12 +328,18 @@ void playerUpdate(Archetype *arch, f32 dt)
             HasReloaded[0] = true;
             ReloadCD[0]    = 0.0f;
         }
-        else
+        else if (Weapon[0] == WEAPON_AK47)
         {
-            Weapon[0]      = WEAPON_PISTOL;
-            AmmoPistol[0]  = PISTOL_CLIP_SIZE;
+            Weapon[0]      = WEAPON_SUOMI;
+            AmmoPistol[0]  = SUOMI_CLIP_SIZE;
             HasReloaded[0] = true;
             ReloadCD[0]    = 0.0f;
+        }
+        else if (Weapon[0] == WEAPON_SUOMI)
+        {
+            Weapon[0]      = WEAPON_SUOMI;
+            AmmoPistol[0]  = SUOMI_CLIP_SIZE;
+            HasReloaded[0] = t
         }
     }
     s_wasYDown = yDown;

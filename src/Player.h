@@ -4,6 +4,7 @@
 
 #define WEAPON_PISTOL  0
 #define WEAPON_AK47    1
+#define WEAPON_SUOMI   2
 
 
 #ifdef __cplusplus
@@ -45,7 +46,7 @@ extern "C" {
     FIELD(PF_AMMO_AK,    "AmmoAK",          f32,  COLD)                       \
     FIELD(PF_HAS_RELOADED,"HasReloaded",    b8,   COLD)                       \
     FIELD(PF_IS_AIMING,  "IsAiming",       b8,   COLD)                       \
-    FIELD(PF_HEALTH_ID,  "HealthID",       u32,  COLD)
+    FIELD(PF_HEALTH_ID,  "HealthID",       u32,  COLD)                       
 
 DECLARE_ARCHETYPE(Player, PLAYER_FIELDS)
 

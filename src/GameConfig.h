@@ -69,6 +69,8 @@
 // WEAPONS
 // =============================================================================
 
+#define NUM_WEAPONS             3u
+
 // Pistol
 #define PISTOL_FIRE_RATE         0.15f  // seconds between shots
 #define PISTOL_CLIP_SIZE         9.0f
