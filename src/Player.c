@@ -24,6 +24,9 @@
 #define MUZZLE_AK_HIP_X      0.10f
 #define MUZZLE_AK_HIP_Y     -0.20f
 #define MUZZLE_AK_HIP_Z     -1.00f
+#define MUZZLE_SUOMI_HIP_X      0.10f
+#define MUZZLE_SUOMI_HIP_Y     -0.20f
+#define MUZZLE_SUOMI_HIP_Z     -1.00f
 // Per-weapon muzzle tip offsets (ADS)
 #define MUZZLE_PISTOL_ADS_X  0.00f
 #define MUZZLE_PISTOL_ADS_Y -0.10f
@@ -31,9 +34,13 @@
 #define MUZZLE_AK_ADS_X      0.00f
 #define MUZZLE_AK_ADS_Y     -0.10f
 #define MUZZLE_AK_ADS_Z     -1.00f
+#define MUZZLE_SUOMI_ADS_X      0.00f
+#define MUZZLE_SUOMI_ADS_Y     -0.10f
+#define MUZZLE_SUOMI_ADS_Z     -1.00f
 
 #define WEAPON_PISTOL  0
 #define WEAPON_AK47    1
+#define WEAPON_SUOMI   2
 
 
 DEFINE_ARCHETYPE(Player, PLAYER_FIELDS)
@@ -44,6 +51,7 @@ static f32 s_currentFov           = FOV_NORMAL;
 static f32 s_cachedAspectRatio    = 16.0f / 9.0f;
 static b8  s_wasYDown             = false;
 static b8  s_wasXDown             = false;
+static b8  s_wasSquareDown        = false;
 
 
 //=============================================================================
@@ -128,10 +136,12 @@ static void playerShoot(u32 *Weapon, f32 *FirCD, f32 *Spread, f32 *RecoilR, f32 
     }
 
     // Manual reload
-    if (isKeyDown(KEY_R) && HasReloaded[0])
+    b8 squareDown = isButtonDown(0, SDL_GAMEPAD_BUTTON_WEST);
+    if (HasReloaded[0] && (isKeyDown(KEY_R) || squareDown && !s_wasSquareDown))
     {
         ReloadCD[0] = (Weapon[0] == WEAPON_AK47) ? AK_RELOAD_TIME : PISTOL_RELOAD_TIME;
     }
+    s_wasSquareDown = squareDown;
 
     Vec2 triggers = getJoystickAxis(0, JOYSTICK_TRIGGER_LEFT, JOYSTICK_TRIGGER_RIGHT);
     b8 fireDown = isMouseDown(BTN_FIRE) ||
