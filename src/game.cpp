@@ -88,19 +88,21 @@ static void bulletHitScan(f32 dt)
                 if (!ef) continue;
                 u32 eCount = g_enemyArch.arena[ec].count;
 
-                b8  *eAlive = (b8  *)ef[EF_ALIVE];
-                f32 *ePosX  = (f32 *)ef[EF_POS_X];
-                f32 *ePosY  = (f32 *)ef[EF_POS_Y];
-                f32 *ePosZ  = (f32 *)ef[EF_POS_Z];
-                f32 *eHX    = (f32 *)ef[EF_HALF_X];
-                f32 *eHY    = (f32 *)ef[EF_HALF_Y];
-                f32 *eHZ    = (f32 *)ef[EF_HALF_Z];
+                b8  *eAlive  = (b8  *)ef[EF_ALIVE];
+                f32 *ePosX   = (f32 *)ef[EF_POS_X];
+                f32 *ePosY   = (f32 *)ef[EF_POS_Y];
+                f32 *ePosZ   = (f32 *)ef[EF_POS_Z];
+                f32 *eOffY   = (f32 *)ef[EF_COLLIDER_OFFSET_Y];
+                f32 *eHX     = (f32 *)ef[EF_HALF_X];
+                f32 *eHY     = (f32 *)ef[EF_HALF_Y];
+                f32 *eHZ     = (f32 *)ef[EF_HALF_Z];
 
                 for (u32 ei = 0; ei < eCount; ei++)
                 {
                     if (!eAlive[ei]) continue;
+                    f32 cy = ePosY[ei] + (eOffY ? eOffY[ei] : 0.0f);
                     if (segmentVsAABB(sx, sy, sz, ex, ey, ez,
-                                      ePosX[ei], ePosY[ei], ePosZ[ei],
+                                      ePosX[ei], cy, ePosZ[ei],
                                       eHX[ei] + br, eHY[ei] + br, eHZ[ei] + br))
                     {
                         hitChunk = ec;
@@ -327,9 +329,6 @@ static void gameUpdate(f32 dt)
     runtimeUpdate(runtime, dt);
 
     // Scene data is available after the first runtimeUpdate — retry every frame until scene is live.
-    if (!g_spawnPointsReady)
-        DEBUG("gameUpdate: sceneRuntime=%p loaded=%d",
-              (void *)sceneRuntime, sceneRuntime ? (int)sceneRuntime->loaded : -1);
     if (!g_spawnPointsReady && sceneRuntime && sceneRuntime->loaded)
     {
         g_spawnPointCount = aiReadSpawnPoints("EnemySpawn", g_spawnPoints, MAX_SPAWN_POINTS);

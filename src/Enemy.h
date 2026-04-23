@@ -32,9 +32,10 @@ extern "C" {
     FIELD(EF_RESTITUTION,  "Restitution",      f32,  COLD)                    \
     FIELD(EF_DAMPING,      "LinearDamping",    f32,  COLD)                    \
     FIELD(EF_SPHERE_R,     "SphereRadius",     f32,  COLD)                    \
-    FIELD(EF_HALF_X,       "ColliderHalfX",    f32,  COLD)                    \
-    FIELD(EF_HALF_Y,       "ColliderHalfY",    f32,  COLD)                    \
-    FIELD(EF_HALF_Z,       "ColliderHalfZ",    f32,  COLD)                    \
+    FIELD(EF_HALF_X,          "ColliderHalfX",      f32,  COLD)                 \
+    FIELD(EF_HALF_Y,          "ColliderHalfY",      f32,  COLD)                 \
+    FIELD(EF_HALF_Z,          "ColliderHalfZ",      f32,  COLD)                 \
+    FIELD(EF_COLLIDER_OFFSET_Y,"ColliderOffsetY",   f32,  COLD)                 \
     FIELD(EF_MODEL_ID,     "ModelID",          u32,  COLD)                    \
     FIELD(EF_STATE,        "AIState",          u32,  COLD)                    \
     FIELD(EF_PREV_STATE,   "AIPrevState",      u32,  COLD)                    \

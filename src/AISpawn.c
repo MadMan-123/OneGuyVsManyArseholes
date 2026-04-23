@@ -96,18 +96,8 @@ u32 aiReadSpawnPoints(const c8 *matchTag, Vec3 *out_positions, u32 maxCount)
     if (!sr) return 0;
 
     u32 found = 0;
-    DEBUG("aiReadSpawnPoints: archetypeCount=%u", sr->data.archetypeCount);
     for (u32 a = 0; a < sr->data.archetypeCount && a < MAX_SCENE_ARCHETYPES; a++)
-    {
-        Archetype *arch = &sr->data.archetypes[a];
-        DEBUG("  arch[%u]: activeChunks=%u layout=%p", a, arch->activeChunkCount, (void *)arch->layout);
-        if (arch->layout)
-        {
-            i32 ti = findFieldIndex(arch->layout, "tag");
-            DEBUG("  arch[%u]: tagFieldIdx=%d entityCount=%u", a, ti, archetypeEntityCount(arch));
-        }
-        processTaggedEntities(arch, matchTag, out_positions, maxCount, &found);
-    }
+        processTaggedEntities(&sr->data.archetypes[a], matchTag, out_positions, maxCount, &found);
 
     INFO("aiReadSpawnPoints: found=%u tag='%s'", found, matchTag);
     return found;

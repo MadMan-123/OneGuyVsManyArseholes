@@ -299,6 +299,7 @@ physSetVelocity
 physShutdown
 physTick
 physWorldCreate
+physWorldDebugDraw
 physWorldDestroy
 physWorldSetCollisionCallback
 physWorldSetGravity

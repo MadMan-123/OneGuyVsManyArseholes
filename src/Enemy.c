@@ -5,9 +5,9 @@
 DEFINE_ARCHETYPE(Enemy, ENEMY_FIELDS)
 
 // Collider box half-extents (metres)
-#define ENEMY_HALF_X      0.30f
-#define ENEMY_HALF_Y      0.85f
-#define ENEMY_HALF_Z      0.30f
+#define ENEMY_HALF_X      0.375f
+#define ENEMY_HALF_Y      1.0625f
+#define ENEMY_HALF_Z      0.375f
 #define ENEMY_MASS        70.0f
 #define ENEMY_DAMPING     6.0f
 #define ENEMY_VISION_RANGE 25.0f
@@ -45,9 +45,10 @@ u32 enemySpawnAt(Vec3 position)
     { WARN("enemySpawnAt: pool spawn failed (pool full?)"); return (u32)-1; }
     INFO("enemySpawnAt: spawned poolIdx=%u localIdx=%u modelID=%u", poolIdx, i, s_modelID);
 
-    ((f32  *)fields[EF_POS_X])[i]       = position.x;
-    ((f32  *)fields[EF_POS_Y])[i]       = position.y;
-    ((f32  *)fields[EF_POS_Z])[i]       = position.z;
+    ((f32  *)fields[EF_POS_X])[i]             = position.x;
+    ((f32  *)fields[EF_POS_Y])[i]             = position.y;
+    ((f32  *)fields[EF_POS_Z])[i]             = position.z;
+    ((f32  *)fields[EF_COLLIDER_OFFSET_Y])[i] = ENEMY_HALF_Y;
     ((Vec4 *)fields[EF_ROT])[i]         = (Vec4){0, 0, 0, 1};
     ((Vec3 *)fields[EF_SCALE])[i]       = (Vec3){ZOMBIE_RENDER_SCALE, ZOMBIE_RENDER_SCALE, ZOMBIE_RENDER_SCALE};
     ((f32  *)fields[EF_VEL_X])[i]       = 0.0f;
@@ -61,7 +62,7 @@ u32 enemySpawnAt(Vec3 position)
     ((f32  *)fields[EF_INV_MASS])[i]    = 1.0f / ENEMY_MASS;
     ((f32  *)fields[EF_RESTITUTION])[i] = 0.0f;
     ((f32  *)fields[EF_DAMPING])[i]     = ENEMY_DAMPING;
-    ((f32  *)fields[EF_SPHERE_R])[i]    = ENEMY_HALF_X;
+    ((f32  *)fields[EF_SPHERE_R])[i]    = 0.0f;
     ((f32  *)fields[EF_HALF_X])[i]      = ENEMY_HALF_X;
     ((f32  *)fields[EF_HALF_Y])[i]      = ENEMY_HALF_Y;
     ((f32  *)fields[EF_HALF_Z])[i]      = ENEMY_HALF_Z;
