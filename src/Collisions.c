@@ -2,6 +2,7 @@
 #include "Bullet.h"
 #include "Enemy.h"
 #include "Player.h"
+#include "GameAudio.h"
 
 HealthManager g_healthManager;
 DamageQueue   g_damageQueue;
@@ -29,8 +30,20 @@ void onBulletCollideEnter(ContactInfo *info)
                                        info->other.poolIdx / info->other.arch->chunkCapacity);
     if (!fields) return;
     u32 localIdx = info->other.poolIdx % info->other.arch->chunkCapacity;
-    HealthID hid = ((u32 *)fields[EF_HEALTH_ID])[localIdx];
+    HealthID hid = ((u32 *)fields[ENEMY_HEALTH_ID])[localIdx];
     damageEnqueue(&g_damageQueue, hid, BULLET_DAMAGE);
+    gameAudioPlayEnemyHit();
+
+    // Pain alert — enemy immediately knows player's position regardless of vision
+    extern Archetype g_playerArch;
+    void **pf = getArchetypeFields(&g_playerArch, 0);
+    if (pf)
+    {
+        ((f32 *)fields[ENEMY_LAST_SEEN_X])[localIdx] = ((f32 *)pf[PLAYER_POSITION_X])[0];
+        ((f32 *)fields[ENEMY_LAST_SEEN_Y])[localIdx] = ((f32 *)pf[PLAYER_POSITION_Y])[0];
+        ((f32 *)fields[ENEMY_LAST_SEEN_Z])[localIdx] = ((f32 *)pf[PLAYER_POSITION_Z])[0];
+        ((f32 *)fields[ENEMY_LAST_SEEN_AGE])[localIdx] = 0.0f;
+    }
 }
 
 // Called when an enemy touches anything (self = enemy entity)
@@ -44,13 +57,14 @@ void onEnemyCollideEnter(ContactInfo *info)
                                        info->self.poolIdx / info->self.arch->chunkCapacity);
     if (!fields) return;
     u32 localIdx = info->self.poolIdx % info->self.arch->chunkCapacity;
-    f32 *cd = (f32 *)fields[EF_ATTACK_CD];
+    f32 *cd = (f32 *)fields[ENEMY_ATTACK_COOLDOWN];
     if (cd[localIdx] > 0.0f) return;
     cd[localIdx] = ENEMY_MELEE_CD;
 
     // Queue damage on the player's health ID
     void **pFields = getArchetypeFields(info->other.arch, 0);
     if (!pFields) return;
-    HealthID hid = ((u32 *)pFields[PF_HEALTH_ID])[0];
+    HealthID hid = ((u32 *)pFields[PLAYER_HEALTH_ID])[0];
     damageEnqueue(&g_damageQueue, hid, ENEMY_MELEE_DAMAGE);
+    gameAudioPlayPlayerHit();
 }

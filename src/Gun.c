@@ -27,21 +27,21 @@ void gunUpdate(Archetype *arch, f32 dt)
 
     void **pf = getArchetypeFields(&g_playerArch, 0);
     if (!pf) return;
-    f32  *posX   = (f32  *)pf[PF_POS_X];
-    f32  *posY   = (f32  *)pf[PF_POS_Y];
-    f32  *posZ   = (f32  *)pf[PF_POS_Z];
-    Vec4 *rot    = (Vec4 *)pf[PF_ROT];
-    u32  *weapon   = (u32  *)pf[PF_WEAPON];
-    b8   *isAiming = (b8   *)pf[PF_IS_AIMING];
+    f32  *posX     = (f32  *)pf[PLAYER_POSITION_X];
+    f32  *posY     = (f32  *)pf[PLAYER_POSITION_Y];
+    f32  *posZ     = (f32  *)pf[PLAYER_POSITION_Z];
+    Vec4 *rot      = (Vec4 *)pf[PLAYER_ROTATION];
+    u32  *weapon   = (u32  *)pf[PLAYER_WEAPON_TYPE];
+    b8   *isAiming = (b8   *)pf[PLAYER_IS_AIMING];
     if (!posX || !posY || !posZ || !rot) return;
 
     void **gf = getArchetypeFields(arch, 0);
     if (!gf) return;
-    f32  *gX      = (f32  *)gf[GF_POS_X];
-    f32  *gY      = (f32  *)gf[GF_POS_Y];
-    f32  *gZ      = (f32  *)gf[GF_POS_Z];
-    Vec4 *gRot    = (Vec4 *)gf[GF_ROT];
-    u32  *modelID = (u32  *)gf[GF_MODEL_ID];
+    f32  *gX      = (f32  *)gf[GUN_POSITION_X];
+    f32  *gY      = (f32  *)gf[GUN_POSITION_Y];
+    f32  *gZ      = (f32  *)gf[GUN_POSITION_Z];
+    Vec4 *gRot    = (Vec4 *)gf[GUN_ROTATION];
+    u32  *modelID = (u32  *)gf[GUN_MODEL_ID];
     if (!gX || !gY || !gZ || !gRot) return;
 
     if (!s_modelsCached && modelID)

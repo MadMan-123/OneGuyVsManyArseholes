@@ -1,6 +1,7 @@
 #include "Player.h"
 #include "Bullet.h"
 #include "GameConfig.h"
+#include "GameAudio.h"
 #include "game.h"
 #include <stdlib.h>
 
@@ -133,6 +134,7 @@ static void playerShoot(u32 *Weapon, f32 *FirCD, f32 *Spread, f32 *RecoilR, f32 
         if (Weapon[0] == WEAPON_PISTOL) AmmoPistol[0] = PISTOL_CLIP_SIZE;
         if (Weapon[0] == WEAPON_AK47)   AmmoAK[0]     = AK_CLIP_SIZE;
         HasReloaded[0] = true;
+        gameAudioPlayReloadDone(Weapon[0]);
     }
 
     // Manual reload
@@ -140,6 +142,7 @@ static void playerShoot(u32 *Weapon, f32 *FirCD, f32 *Spread, f32 *RecoilR, f32 
     if (HasReloaded[0] && (isKeyDown(KEY_R) || squareDown && !s_wasSquareDown))
     {
         ReloadCD[0] = (Weapon[0] == WEAPON_AK47) ? AK_RELOAD_TIME : PISTOL_RELOAD_TIME;
+        gameAudioPlayReloadStart(Weapon[0]);
     }
     s_wasSquareDown = squareDown;
 
@@ -178,6 +181,7 @@ static void playerShoot(u32 *Weapon, f32 *FirCD, f32 *Spread, f32 *RecoilR, f32 
         const Vec3 *muzzleTable = isAiming ? muzzleADS : muzzleHip;
         Vec3 spawnPos = v3Add(eyePos, quatRotateVec3(Rot[0], muzzleTable[Weapon[0]]));
         bulletSpawn(spawnPos, dir, bulletSpeed);
+        gameAudioPlayShot(Weapon[0]);
 
         f32 kick = (Spread[0] == 0.0f) ? firstRecoil : recoilKick;
         RecoilR[0] += kick;
@@ -189,13 +193,13 @@ static void playerShoot(u32 *Weapon, f32 *FirCD, f32 *Spread, f32 *RecoilR, f32 
             Spread[0] += AK_SPREAD_RATE;
             if (Spread[0] > AK_SPREAD_MAX) Spread[0] = AK_SPREAD_MAX;
             AmmoAK[0] -= 1.0f;
-            if (AmmoAK[0] <= 0.0f) ReloadCD[0] += AK_RELOAD_TIME;
+            if (AmmoAK[0] <= 0.0f) { ReloadCD[0] += AK_RELOAD_TIME; gameAudioPlayReloadStart(WEAPON_AK47); }
         }
         else
         {
             Spread[0] = PISTOL_SPREAD_MAX;
             AmmoPistol[0] -= 1.0f;
-            if (AmmoPistol[0] <= 0.0f) ReloadCD[0] += PISTOL_RELOAD_TIME;
+            if (AmmoPistol[0] <= 0.0f) { ReloadCD[0] += PISTOL_RELOAD_TIME; gameAudioPlayReloadStart(WEAPON_PISTOL); }
         }
     }
 
@@ -219,29 +223,29 @@ void playerUpdate(Archetype *arch, f32 dt)
     void **fields = getArchetypeFields(arch, 0);
     if (!fields || arch->arena[0].count == 0) return;
 
-    f32  *PosX        = (f32  *)fields[PF_POS_X];
-    f32  *PosY        = (f32  *)fields[PF_POS_Y];
-    f32  *PosZ        = (f32  *)fields[PF_POS_Z];
-    Vec4 *Rot         = (Vec4 *)fields[PF_ROT];
-    f32  *VelX        = (f32  *)fields[PF_VEL_X];
-    f32  *VelY        = (f32  *)fields[PF_VEL_Y];
-    f32  *VelZ        = (f32  *)fields[PF_VEL_Z];
-    f32  *Yaw         = (f32  *)fields[PF_YAW];
-    f32  *Pitch       = (f32  *)fields[PF_PITCH];
-    b8   *IsGnd       = (b8   *)fields[PF_IS_GROUNDED];
-    u32* Weapon      = (u32  *)fields[PF_WEAPON];
-    f32  *FirCD       = (f32  *)fields[PF_FIRE_CD];
-    f32  *Spread      = (f32  *)fields[PF_SPREAD];
-    f32  *RecoilR     = (f32  *)fields[PF_RECOIL_R];
-    b8   *WasFire     = (b8   *)fields[PF_WAS_FIRE];
-    f32  *ReloadCD    = (f32  *)fields[PF_RELOAD_CD];
-    f32  *AmmoPistol  = (f32  *)fields[PF_AMMO_PISTOL];
-    f32  *AmmoAK      = (f32  *)fields[PF_AMMO_AK];
-    b8   *HasReloaded = (b8   *)fields[PF_HAS_RELOADED];
-    b8   *IsAiming    = (b8   *)fields[PF_IS_AIMING];
+    f32  *PosX        = (f32  *)fields[PLAYER_POSITION_X];
+    f32  *PosY        = (f32  *)fields[PLAYER_POSITION_Y];
+    f32  *PosZ        = (f32  *)fields[PLAYER_POSITION_Z];
+    Vec4 *Rot         = (Vec4 *)fields[PLAYER_ROTATION];
+    f32  *VelX        = (f32  *)fields[PLAYER_LINEAR_VELOCITY_X];
+    f32  *VelY        = (f32  *)fields[PLAYER_LINEAR_VELOCITY_Y];
+    f32  *VelZ        = (f32  *)fields[PLAYER_LINEAR_VELOCITY_Z];
+    f32  *Yaw         = (f32  *)fields[PLAYER_YAW];
+    f32  *Pitch       = (f32  *)fields[PLAYER_PITCH];
+    b8   *IsGnd       = (b8   *)fields[PLAYER_IS_GROUNDED];
+    u32  *Weapon      = (u32  *)fields[PLAYER_WEAPON_TYPE];
+    f32  *FirCD       = (f32  *)fields[PLAYER_FIRE_COOLDOWN];
+    f32  *Spread      = (f32  *)fields[PLAYER_CURRENT_SPREAD];
+    f32  *RecoilR     = (f32  *)fields[PLAYER_RECOIL_RECOVERY];
+    b8   *WasFire     = (b8   *)fields[PLAYER_WAS_FIRE_DOWN];
+    f32  *ReloadCD    = (f32  *)fields[PLAYER_RELOAD_COOLDOWN];
+    f32  *AmmoPistol  = (f32  *)fields[PLAYER_AMMO_PISTOL];
+    f32  *AmmoAK      = (f32  *)fields[PLAYER_AMMO_AK];
+    b8   *HasReloaded = (b8   *)fields[PLAYER_HAS_RELOADED];
+    b8   *IsAiming    = (b8   *)fields[PLAYER_IS_AIMING];
 
     // Hide player mesh in first-person
-    ((u32 *)fields[PF_MODEL_ID])[0] = (u32)-1;
+    ((u32 *)fields[PLAYER_MODEL_ID])[0] = (u32)-1;
 
     if (!s_mouseCapturedOnStart)
     {
@@ -292,6 +296,8 @@ void playerUpdate(Archetype *arch, f32 dt)
     s_wasYDown = yDown;
     playerLook(Yaw, Pitch, RecoilR, Rot, dt);
     playerMove(VelX, VelY, VelZ, IsGnd, Rot[0], PosX[0], PosY[0], PosZ[0]);
+    if (IsGnd[0] && (fabsf(xInputAxis) > 0.1f || fabsf(yInputAxis) > 0.1f))
+        gameAudioPlayFootstep();
     // ADS: right mouse or L2
     Vec2 triggers  = getJoystickAxis(0, JOYSTICK_TRIGGER_LEFT, JOYSTICK_TRIGGER_RIGHT);
     b8 wasAiming   = IsAiming[0];

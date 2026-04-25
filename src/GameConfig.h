@@ -42,7 +42,7 @@
 // DAMAGE
 // =============================================================================
 
-#define BULLET_DAMAGE            25.0f
+#define BULLET_DAMAGE            10.0f
 
 #define ENEMY_MELEE_DAMAGE       10.0f
 #define ENEMY_MELEE_CD           1.0f   // seconds between enemy melee hits

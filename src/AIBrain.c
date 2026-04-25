@@ -3,6 +3,8 @@
 #include "Enemy.h"
 #include "Player.h"
 #include "Collisions.h"
+#include "GameConfig.h"
+#include "GameAudio.h"
 #include "game.h"
 #include <math.h>
 
@@ -38,9 +40,9 @@ static Vec3 playerPos(void)
     void **f = getArchetypeFields(&g_playerArch, 0);
     if (!f) return v3Zero;
     return (Vec3){
-        ((f32 *)f[PF_POS_X])[0],
-        ((f32 *)f[PF_POS_Y])[0],
-        ((f32 *)f[PF_POS_Z])[0],
+        ((f32 *)f[PLAYER_POSITION_X])[0],
+        ((f32 *)f[PLAYER_POSITION_Y])[0],
+        ((f32 *)f[PLAYER_POSITION_Z])[0],
     };
 }
 
@@ -50,9 +52,9 @@ static Vec3 playerVel(void)
     void **f = getArchetypeFields(&g_playerArch, 0);
     if (!f) return v3Zero;
     return (Vec3){
-        ((f32 *)f[PF_VEL_X])[0],
-        ((f32 *)f[PF_VEL_Y])[0],
-        ((f32 *)f[PF_VEL_Z])[0],
+        ((f32 *)f[PLAYER_LINEAR_VELOCITY_X])[0],
+        ((f32 *)f[PLAYER_LINEAR_VELOCITY_Y])[0],
+        ((f32 *)f[PLAYER_LINEAR_VELOCITY_Z])[0],
     };
 }
 
@@ -92,10 +94,10 @@ void aiBrainTick(Archetype *arch, f32 dt)
     {
         void **f2 = getArchetypeFields(arch, c2);
         if (!f2) continue;
-        b8  *a2 = (b8  *)f2[EF_ALIVE];
-        f32 *x2 = (f32 *)f2[EF_POS_X];
-        f32 *y2 = (f32 *)f2[EF_POS_Y];
-        f32 *z2 = (f32 *)f2[EF_POS_Z];
+        b8  *a2 = (b8  *)f2[ENEMY_ALIVE];
+        f32 *x2 = (f32 *)f2[ENEMY_POSITION_X];
+        f32 *y2 = (f32 *)f2[ENEMY_POSITION_Y];
+        f32 *z2 = (f32 *)f2[ENEMY_POSITION_Z];
         u32 n2  = arch->arena[c2].count;
         for (u32 j = 0; j < n2 && allCount < 512; j++)
             if (a2[j]) allPos[allCount++] = (Vec3){ x2[j], y2[j], z2[j] };
@@ -107,31 +109,31 @@ void aiBrainTick(Archetype *arch, f32 dt)
         if (!fields) continue;
         u32 count = arch->arena[ch].count;
 
-        b8   *alive    = (b8  *)fields[EF_ALIVE];
-        f32  *posX     = (f32 *)fields[EF_POS_X];
-        f32  *posY     = (f32 *)fields[EF_POS_Y];
-        f32  *posZ     = (f32 *)fields[EF_POS_Z];
-        Vec4 *rot      = (Vec4 *)fields[EF_ROT];
-        f32  *velX     = (f32 *)fields[EF_VEL_X];
-        f32  *velY     = (f32 *)fields[EF_VEL_Y];
-        f32  *velZ     = (f32 *)fields[EF_VEL_Z];
-        u32  *state    = (u32 *)fields[EF_STATE];
-        u32  *prev     = (u32 *)fields[EF_PREV_STATE];
-        f32  *sTimer   = (f32 *)fields[EF_STATE_TIMER];
-        u32  *healthId = (u32 *)fields[EF_HEALTH_ID];
-        f32  *atkCd    = (f32 *)fields[EF_ATTACK_CD];
-        f32  *visR     = (f32 *)fields[EF_VISION_RANGE];
-        f32  *visCos   = (f32 *)fields[EF_VISION_COS];
-        f32  *hearR    = (f32 *)fields[EF_HEARING];
-        f32  *lsX      = (f32 *)fields[EF_LAST_SEEN_X];
-        f32  *lsY      = (f32 *)fields[EF_LAST_SEEN_Y];
-        f32  *lsZ      = (f32 *)fields[EF_LAST_SEEN_Z];
-        f32  *lsAge    = (f32 *)fields[EF_LAST_SEEN_AGE];
-        f32  *wX       = (f32 *)fields[EF_WANDER_X];
-        f32  *wZ       = (f32 *)fields[EF_WANDER_Z];
-        f32  *wTimer   = (f32 *)fields[EF_WANDER_TIMER];
-        f32  *yawF     = (f32 *)fields[EF_YAW];
-        b8   *grounded = (b8  *)fields[EF_IS_GROUNDED];
+        b8   *alive    = (b8  *)fields[ENEMY_ALIVE];
+        f32  *posX     = (f32 *)fields[ENEMY_POSITION_X];
+        f32  *posY     = (f32 *)fields[ENEMY_POSITION_Y];
+        f32  *posZ     = (f32 *)fields[ENEMY_POSITION_Z];
+        Vec4 *rot      = (Vec4 *)fields[ENEMY_ROTATION];
+        f32  *velX     = (f32 *)fields[ENEMY_LINEAR_VELOCITY_X];
+        f32  *velY     = (f32 *)fields[ENEMY_LINEAR_VELOCITY_Y];
+        f32  *velZ     = (f32 *)fields[ENEMY_LINEAR_VELOCITY_Z];
+        u32  *state    = (u32 *)fields[ENEMY_AI_STATE];
+        u32  *prev     = (u32 *)fields[ENEMY_AI_PREV_STATE];
+        f32  *sTimer   = (f32 *)fields[ENEMY_AI_STATE_TIMER];
+        u32  *healthId = (u32 *)fields[ENEMY_HEALTH_ID];
+        f32  *atkCd    = (f32 *)fields[ENEMY_ATTACK_COOLDOWN];
+        f32  *visR     = (f32 *)fields[ENEMY_VISION_RANGE];
+        f32  *visCos   = (f32 *)fields[ENEMY_VISION_FOV_COS];
+        f32  *hearR    = (f32 *)fields[ENEMY_HEARING_RANGE];
+        f32  *lsX      = (f32 *)fields[ENEMY_LAST_SEEN_X];
+        f32  *lsY      = (f32 *)fields[ENEMY_LAST_SEEN_Y];
+        f32  *lsZ      = (f32 *)fields[ENEMY_LAST_SEEN_Z];
+        f32  *lsAge    = (f32 *)fields[ENEMY_LAST_SEEN_AGE];
+        f32  *wX       = (f32 *)fields[ENEMY_WANDER_TARGET_X];
+        f32  *wZ       = (f32 *)fields[ENEMY_WANDER_TARGET_Z];
+        f32  *wTimer   = (f32 *)fields[ENEMY_WANDER_TIMER];
+        f32  *yawF     = (f32 *)fields[ENEMY_YAW];
+        b8   *grounded = (b8  *)fields[ENEMY_IS_GROUNDED];
 
         for (u32 i = 0; i < count; i++)
         {
@@ -182,7 +184,7 @@ void aiBrainTick(Archetype *arch, f32 dt)
 
             // --- utility scoring
             f32 hp = healthGet(&g_healthManager, (HealthID)healthId[i]);
-            f32 hpFrac = (healthId[i] != (u32)-1) ? (hp / 100.0f) : 1.0f;
+            f32 hpFrac = (healthId[i] != (u32)-1) ? (hp / ENEMY_START_HP) : 1.0f;
             f32 sawRecently = 1.0f - smoothstep01(0.0f, 8.0f, lsAge[i]);
 
             f32 uIdle   = 1.0f - (sees ? 1.0f : (hears ? 0.5f : sawRecently));
@@ -191,7 +193,8 @@ void aiBrainTick(Archetype *arch, f32 dt)
             // Chase: player is visible and within chase range
             f32 uChase  = (sees && dist < CHASE_RANGE_MAX) ? (0.4f + 0.6f * smoothstep01(CHASE_RANGE_MAX, 0.0f, dist)) : 0.0f;
             f32 hurtFac = (1.0f - hpFrac); hurtFac *= hurtFac;
-            f32 uScared = hurtFac + ((sees && hpFrac < SCARED_HP_FRAC) ? 0.3f : 0.0f);
+            // Below SCARED_HP_FRAC, always override every other state (1.2 > max uChase + HYSTERESIS)
+            f32 uScared = (hpFrac < SCARED_HP_FRAC) ? 1.2f : hurtFac;
 
             uIdle   = clamp01(uIdle);
             uAgit   = clamp01(uAgit);
@@ -214,6 +217,7 @@ void aiBrainTick(Archetype *arch, f32 dt)
                 prev[i] = current;
                 state[i] = best;
                 sTimer[i] = 0.0f;
+                if (best == AI_STATE_CHASE) gameAudioPlayZombieAlert();
             }
             else
             {
@@ -349,7 +353,7 @@ void aiBrainTick(Archetype *arch, f32 dt)
                     void **pf = getArchetypeFields(&g_playerArch, 0);
                     if (pf)
                     {
-                        HealthID phid = (HealthID)((u32 *)pf[PF_HEALTH_ID])[0];
+                        HealthID phid = (HealthID)((u32 *)pf[PLAYER_HEALTH_ID])[0];
                         damageEnqueue(&g_damageQueue, phid, ENEMY_MELEE_DAMAGE);
                     }
                     atkCd[i] = ENEMY_MELEE_CD;

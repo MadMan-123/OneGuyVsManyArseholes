@@ -26,6 +26,10 @@ archetypeSpawnIn
 archetypeSpawnInWithCallback
 arenaCreate
 arenaDestroy
+audio DATA
+audioInit
+audioPump
+audioShutdown
 bakeScene
 bindFramebuffer
 bindSSBOBase
@@ -271,6 +275,7 @@ objModelParseVec2
 objModelParseVec3
 objModelToIndexedModel
 onDestroy
+pauseMusic
 physApplyForce
 physApplyImpulse
 physAutoRegisterScene
@@ -304,6 +309,7 @@ physSetVelocity
 physShutdown
 physTick
 physWorldCreate
+physWorldDebugDraw
 physWorldDestroy
 physWorldSetCollisionCallback
 physWorldSetGravity
@@ -323,6 +329,18 @@ platformLibraryLoad
 platformLibrarySymbol
 platformPipeClose
 platformPipeOpen
+playMusic
+playSound
+playSoundID
+prefabCount
+prefabGetBucket
+prefabLoad
+prefabLoadDirectory
+prefabRegistry DATA
+prefabRegistryCreate
+prefabRegistryDestroy
+prefabSave
+prefabSpawn
 printEntityArena
 processInput
 profileAddEntities
@@ -383,6 +401,8 @@ rendererReleaseInstanceBuffer
 rendererSetActiveCamera
 rendererSubmitInstance
 rendererUploadLights
+resFindAudio
+resGetAudio
 resGetMaterial
 resGetMaterialByName
 resGetMesh
@@ -420,7 +440,10 @@ sceneRuntimeLoad
 sceneRuntimeSetCallbacks
 setBoxScale
 setInputCaptureState
+setMasterVolume
 setMouseCaptured
+setMusicVolume
+setSfxVolume
 setVSync
 simdAbs
 simdAdd
@@ -447,8 +470,11 @@ simdSqrt
 simdSub
 simdSum
 startApplication
+stopMusic
+stopSound
 swapBuffer
 switchScene
+textureSystemReset
 unbindFramebuffer
 unloadECSSystemDLL
 unloadPhysicsDLL

@@ -1,9 +1,9 @@
 #include "Bullet.h"
 
-#define POOL_CAPACITY   256
-#define BULLET_LIFETIME 3.0f
-#define BULLET_RADIUS   0.05f
-#define BULLET_MASS     0.01f
+#define POOL_CAPACITY        256
+#define BULLET_LIFETIME_SECS 3.0f
+#define BULLET_RADIUS        0.05f
+#define BULLET_MASS_KG       0.01f
 DEFINE_ARCHETYPE(Bullet, BULLET_FIELDS)
 
 static Archetype *s_arch = NULL;
@@ -38,28 +38,28 @@ void bulletSpawn(Vec3 position, Vec3 direction, f32 speed)
 
     Vec3 dir = v3Norm(direction);
 
-    ((f32  *)fields[BF_POS_X])[i]     = position.x;
-    ((f32  *)fields[BF_POS_Y])[i]     = position.y;
-    ((f32  *)fields[BF_POS_Z])[i]     = position.z;
-    ((Vec4 *)fields[BF_ROT])[i]       = (Vec4){0.0f, 0.0f, 0.0f, 1.0f};
-    ((Vec3 *)fields[BF_SCALE])[i]     = (Vec3){BULLET_RADIUS * 2.0f, BULLET_RADIUS * 2.0f, BULLET_RADIUS * 2.0f};
-    ((f32  *)fields[BF_VEL_X])[i]     = dir.x * speed;
-    ((f32  *)fields[BF_VEL_Y])[i]     = dir.y * speed;
-    ((f32  *)fields[BF_VEL_Z])[i]     = dir.z * speed;
-    ((f32  *)fields[BF_FORCE_X])[i]   = 0.0f;
-    ((f32  *)fields[BF_FORCE_Y])[i]   = 0.0f;
-    ((f32  *)fields[BF_FORCE_Z])[i]   = 0.0f;
-    ((u32  *)fields[BF_BODY_TYPE])[i] = PHYS_BODY_DYNAMIC;
-    ((f32  *)fields[BF_MASS])[i]      = BULLET_MASS;
-    ((f32  *)fields[BF_RESTITUTION])[i] = 0.0f;
-    ((f32  *)fields[BF_DAMPING])[i]   = 0.0f;
-    ((f32  *)fields[BF_SPHERE_R])[i]   = BULLET_RADIUS;
-    ((f32  *)fields[BF_HALF_X])[i]    = 0.0f;
-    ((f32  *)fields[BF_HALF_Y])[i]    = 0.0f;
-    ((f32  *)fields[BF_HALF_Z])[i]    = 0.0f;
-    ((f32  *)fields[BF_LIFETIME])[i]  = 0.0f;
-    ((u32  *)fields[BF_MODEL_ID])[i]  = s_sphereModelID;
-    ((b8   *)fields[BF_CCD_ENABLED])[i] = true;
+    ((f32  *)fields[BULLET_POSITION_X])[i]       = position.x;
+    ((f32  *)fields[BULLET_POSITION_Y])[i]       = position.y;
+    ((f32  *)fields[BULLET_POSITION_Z])[i]       = position.z;
+    ((Vec4 *)fields[BULLET_ROTATION])[i]         = (Vec4){0.0f, 0.0f, 0.0f, 1.0f};
+    ((Vec3 *)fields[BULLET_SCALE])[i]            = (Vec3){BULLET_RADIUS * 2.0f, BULLET_RADIUS * 2.0f, BULLET_RADIUS * 2.0f};
+    ((f32  *)fields[BULLET_LINEAR_VELOCITY_X])[i] = dir.x * speed;
+    ((f32  *)fields[BULLET_LINEAR_VELOCITY_Y])[i] = dir.y * speed;
+    ((f32  *)fields[BULLET_LINEAR_VELOCITY_Z])[i] = dir.z * speed;
+    ((f32  *)fields[BULLET_FORCE_X])[i]          = 0.0f;
+    ((f32  *)fields[BULLET_FORCE_Y])[i]          = 0.0f;
+    ((f32  *)fields[BULLET_FORCE_Z])[i]          = 0.0f;
+    ((u32  *)fields[BULLET_PHYSICS_BODY_TYPE])[i] = PHYS_BODY_DYNAMIC;
+    ((f32  *)fields[BULLET_MASS])[i]             = BULLET_MASS_KG;
+    ((f32  *)fields[BULLET_RESTITUTION])[i]      = 0.0f;
+    ((f32  *)fields[BULLET_LINEAR_DAMPING])[i]   = 0.0f;
+    ((f32  *)fields[BULLET_SPHERE_RADIUS])[i]    = BULLET_RADIUS;
+    ((f32  *)fields[BULLET_COLLIDER_HALF_X])[i]  = 0.0f;
+    ((f32  *)fields[BULLET_COLLIDER_HALF_Y])[i]  = 0.0f;
+    ((f32  *)fields[BULLET_COLLIDER_HALF_Z])[i]  = 0.0f;
+    ((f32  *)fields[BULLET_LIFETIME])[i]         = 0.0f;
+    ((u32  *)fields[BULLET_MODEL_ID])[i]         = s_sphereModelID;
+    ((b8   *)fields[BULLET_CCD_ENABLED])[i]      = true;
 }
 
 void bulletUpdate(Archetype *arch, f32 dt)
@@ -70,14 +70,14 @@ void bulletUpdate(Archetype *arch, f32 dt)
         if (!fields) continue;
         u32 count = arch->arena[ch].count;
 
-        b8  *alive    = (b8  *)fields[BF_ALIVE];
-        f32 *lifetime = (f32 *)fields[BF_LIFETIME];
+        b8  *alive    = (b8  *)fields[BULLET_ALIVE];
+        f32 *lifetime = (f32 *)fields[BULLET_LIFETIME];
 
         for (u32 i = 0; i < count; i++)
         {
             if (!alive[i]) continue;
             lifetime[i] += dt;
-            if (lifetime[i] >= BULLET_LIFETIME)
+            if (lifetime[i] >= BULLET_LIFETIME_SECS)
                 archetypePoolDespawn(arch, (ch * arch->chunkCapacity) + i);
         }
     }

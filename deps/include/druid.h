@@ -483,6 +483,7 @@ extern "C"
         MEM_TAG_GAME,
         MEM_TAG_MODEL,
         MEM_TAG_GEOMETRY_BUFFER,
+        MEM_TAG_AUDIO,
         MEM_TAG_MAX
     } MemTag;
 
@@ -934,10 +935,77 @@ extern "C"
                                     b8 isBuffered,
                                     u32 poolCapacity,
                                     b8 isPhysicsBody,
+                                    b8 isPersistent,
+                                    b8 uniformScale,
                                     b8 useCpp);
 
     // compile all archetype system DLLs in the project
     DAPI b8 buildArchetypeSystems(const c8 *projectDir, c8 *outLog, u32 logSize);
+
+    //=====================================================================================================================
+    // Prefab system
+    // Prefabs are named presets of archetype field values stored in binary .prefab files.
+    // The engine auto-loads all *.prefab files from <projectDir>/prefabs/ at startup.
+    // Game code spawns a prefab entity with: prefabSpawn(&g_enemyArch, prefabIdx, pos)
+
+    #define PREFAB_MAGIC          0x46505244u  // "DRPF"
+    #define PREFAB_VERSION        1u
+    #define PREFAB_MAX_FIELDS     48           // stored fields per prefab
+    #define PREFAB_MAX_PER_ARCH    8           // prefabs per archetype bucket
+    #define PREFAB_MAX_BUCKETS    16           // total archetype buckets
+    #define PREFAB_FIELD_NAME_MAX 32           // max field name length in file
+    #define PREFAB_DATA_POOL_SIZE 768          // bytes of field value storage per prefab (48 * 16)
+
+    typedef struct {
+        c8  name[PREFAB_FIELD_NAME_MAX];  // field name (e.g. "ModelID")
+        u32 size;                          // field size in bytes
+        u32 dataOffset;                    // byte offset into Prefab.data[]
+    } PrefabField;
+
+    typedef struct {
+        c8         name[MAX_SCENE_NAME];
+        PrefabField fields[PREFAB_MAX_FIELDS];
+        u32        fieldCount;
+        u8         data[PREFAB_DATA_POOL_SIZE];
+    } Prefab;
+
+    typedef struct {
+        c8        archName[MAX_SCENE_NAME];
+        Archetype *archRuntime;             // NULL until first prefabSpawn — resolved lazily
+        Prefab    prefabs[PREFAB_MAX_PER_ARCH];
+        u32       prefabCount;
+    } PrefabBucket;
+
+    typedef struct {
+        PrefabBucket buckets[PREFAB_MAX_BUCKETS];
+        u32          bucketCount;
+    } PrefabRegistry;
+
+    DAPI extern PrefabRegistry *prefabRegistry;
+
+    // Lifecycle — called automatically by runtimeCreate/runtimeDestroy
+    DAPI b8    prefabRegistryCreate(void);
+    DAPI void  prefabRegistryDestroy(void);
+
+    // Load all *.prefab files from the given directory.
+    // Called automatically by runtimeCreate on "<projectDir>/prefabs/".
+    DAPI u32   prefabLoadDirectory(const c8 *dir);
+
+    // Load / save a single prefab file
+    DAPI b8    prefabLoad(const c8 *path);
+    DAPI b8    prefabSave(const c8 *path, const c8 *archName, const c8 *prefabName,
+                          const c8 (*fieldNames)[PREFAB_FIELD_NAME_MAX],
+                          const void **fieldValues, const u32 *fieldSizes, u32 fieldCount);
+
+    // Runtime spawn: stamp prefab[prefabIdx] onto a new pooled entity and set its position.
+    // Returns poolIdx on success, (u32)-1 on failure.
+    DAPI u32   prefabSpawn(Archetype *arch, u32 prefabIdx, Vec3 pos);
+
+    // Number of prefabs registered for this archetype
+    DAPI u32   prefabCount(Archetype *arch);
+
+    // Direct bucket access (e.g. for editor inspection)
+    DAPI PrefabBucket *prefabGetBucket(Archetype *arch);
 
     // Entity manager
     typedef struct
@@ -1491,6 +1559,8 @@ extern "C"
     DAPI u32 initTexture(const c8 *fileName);
     // free texture from memory
     DAPI void freeTexture(u32 texture);
+    // reset internal texture caches (call before memorySystemShutdown)
+    DAPI void textureSystemReset(void);
 
     DAPI u32 createCubeMapTexture(const c8 **faces, u32 count);
     // Terrain stuff
@@ -1744,6 +1814,15 @@ extern "C"
     DAPI void draw(Model *model, u32 shader, b8 shouldUpdateMaterials);
 
 
+    // audio clip — decoded PCM owned by the resource manager
+    typedef struct
+    {
+        c8            name[256];
+        u8           *pcm;
+        u32           byteLen;
+        SDL_AudioSpec spec;
+    } AudioClip;
+
     // resource manager
     typedef struct
     {
@@ -1756,6 +1835,7 @@ extern "C"
         f32 *textureAlphaThresholds;  // per-texture alpha cutoff threshold (0-1)
         u32 *textureWrapModes;  // GL wrap mode: GL_REPEAT, GL_CLAMP_TO_EDGE, GL_MIRRORED_REPEAT
         u32 *textureFilterModes;  // GL filter mode: GL_LINEAR, GL_NEAREST
+        AudioClip *audioBuffer;
 
         // Global geometry pool — owned by the resource manager
         GeometryBuffer *geoBuffer;
@@ -1764,6 +1844,7 @@ extern "C"
         HashMap mesheIDs;
         HashMap modelIDs;
         HashMap materialIDs;
+        HashMap audioIDs;
         // TODO: create seperate meta data struct
         //  meta data
         u32 materialCount;
@@ -1771,20 +1852,22 @@ extern "C"
         u32 modelCount;
         u32 textureCount;
         u32 shaderCount;
+        u32 audioCount;
 
         u32 materialUsed;
         u32 meshUsed;
         u32 modelUsed;
         u32 textureUsed;
         u32 shaderUsed;
+        u32 audioUsed;
     } ResourceManager;
 
     DAPI extern ResourceManager *resources;
 
     DAPI ResourceManager *createResourceManager(u32 materialCount,
                                                 u32 textureCount, u32 meshCount,
-                                                u32 modelCount,
-                                                u32 shaderCount);
+                                                u32 modelCount, u32 shaderCount,
+                                                u32 audioCount);
     void cleanUpResourceManager(ResourceManager *manager);
     DAPI void readResources(ResourceManager *manager, const c8 *filename);
     // After readResources(), overlay any saved .drmt presets on top of the
@@ -1820,6 +1903,53 @@ extern "C"
                                   const c8 *filename);
     DAPI void resRegisterPrimitive(ResourceManager *manager,
                                    const c8 *name, Mesh *mesh);
+
+    // audio lookup helpers
+    DAPI i32       resFindAudio(const c8 *name);
+    DAPI AudioClip *resGetAudio(u32 index);
+
+    //=====================================================================================================================
+    // Audio system
+    //=====================================================================================================================
+
+#define AUDIO_MAX_VOICES 32
+
+    typedef struct
+    {
+        SDL_AudioStream *stream;
+        b8               active;
+    } AudioVoice;
+
+    typedef struct
+    {
+        SDL_AudioDeviceID device;
+        SDL_AudioStream  *musicStream;
+        AudioVoice        voices[AUDIO_MAX_VOICES];
+        b8                musicLoop;
+        u32               musicClipIdx;  // index into resources->audioBuffer, U32_MAX = none
+        u32               musicCursor;   // byte offset into pcm for looping
+        f32               masterVol;
+        f32               sfxVol;
+        f32               musicVol;
+    } AudioSystem;
+
+    DAPI extern AudioSystem *audio;
+
+    DAPI b8   audioInit(void);
+    DAPI void audioShutdown(void);
+    DAPI void audioPump(void);          // call once per frame to refill music, reap finished voices
+
+    DAPI i32  playSound(const c8 *name, f32 volume);
+    DAPI i32  playSoundID(u32 audioIdx, f32 volume);
+    DAPI void stopSound(i32 voice);
+
+    DAPI void playMusic(const c8 *name, b8 loop);
+    DAPI void stopMusic(void);
+    DAPI void pauseMusic(b8 paused);
+
+    DAPI void setMasterVolume(f32 v);
+    DAPI void setSfxVolume(f32 v);
+    DAPI void setMusicVolume(f32 v);
 
     // keys
     // keyboard keys enum
@@ -2463,6 +2593,14 @@ extern "C"
     } PhysicsDLL;
 
     // World
+    #define PSHAPE_SPHERE 1u
+    #define PSHAPE_BOX    2u
+
+    // Callback receives the world-space AABB center, half-extents, bounding radius,
+    // and shape type (PSHAPE_SPHERE or PSHAPE_BOX) for every body in the last step.
+    typedef void (*PhysDebugBodyFn)(Vec3 center, Vec3 half, f32 radius, u32 shape, void *userdata);
+    DAPI void          physWorldDebugDraw(PhysicsWorld *world, PhysDebugBodyFn fn, void *userdata);
+
     DAPI PhysicsWorld *physWorldCreate(Vec3 gravity, f32 timestep);
     DAPI void          physWorldDestroy(PhysicsWorld *world);
     DAPI void          physWorldStep(PhysicsWorld *world, f32 dt);
