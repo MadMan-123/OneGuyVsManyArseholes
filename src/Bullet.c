@@ -1,65 +1,33 @@
 #include "Bullet.h"
 
-#define POOL_CAPACITY        256
 #define BULLET_LIFETIME_SECS 3.0f
-#define BULLET_RADIUS        0.05f
-#define BULLET_MASS_KG       0.01f
 DEFINE_ARCHETYPE(Bullet, BULLET_FIELDS)
 
 static Archetype *s_arch = NULL;
-static u32 s_sphereModelID = (u32)-1;
 
 void bulletInit(Archetype *arch)
 {
     s_arch = arch;
-
-    if (resources)
-    {
-        Model *sphere = resGetModelByName("Sphere");
-        if (sphere)
-            s_sphereModelID = (u32)(sphere - resources->modelBuffer);
-        else if (resources->modelUsed > 0)
-        {
-            s_sphereModelID = 0;
-            WARN("bulletInit: Sphere model not found, using model 0 as fallback");
-        }
-        else
-            ERROR("bulletInit: no models available");
-    }
 }
 
 void bulletSpawn(Vec3 position, Vec3 direction, f32 speed)
 {
     if (!s_arch) return;
 
-    u32 poolIdx = 0, i = 0;
-    void **fields = NULL;
-    if (!archetypePoolSpawnFields(s_arch, &poolIdx, &i, &fields)) return;
+    u32 poolIdx = prefabSpawn(s_arch, 0, position);
+    if (poolIdx == (u32)-1) return;
+
+    // Override velocity with the caller's direction and speed
+    u32 chunkIdx = poolIdx / s_arch->chunkCapacity;
+    u32 localIdx = poolIdx % s_arch->chunkCapacity;
+    void **fields = getArchetypeFields(s_arch, chunkIdx);
+    if (!fields) return;
 
     Vec3 dir = v3Norm(direction);
-
-    ((f32  *)fields[BULLET_POSITION_X])[i]       = position.x;
-    ((f32  *)fields[BULLET_POSITION_Y])[i]       = position.y;
-    ((f32  *)fields[BULLET_POSITION_Z])[i]       = position.z;
-    ((Vec4 *)fields[BULLET_ROTATION])[i]         = (Vec4){0.0f, 0.0f, 0.0f, 1.0f};
-    ((Vec3 *)fields[BULLET_SCALE])[i]            = (Vec3){BULLET_RADIUS * 2.0f, BULLET_RADIUS * 2.0f, BULLET_RADIUS * 2.0f};
-    ((f32  *)fields[BULLET_LINEAR_VELOCITY_X])[i] = dir.x * speed;
-    ((f32  *)fields[BULLET_LINEAR_VELOCITY_Y])[i] = dir.y * speed;
-    ((f32  *)fields[BULLET_LINEAR_VELOCITY_Z])[i] = dir.z * speed;
-    ((f32  *)fields[BULLET_FORCE_X])[i]          = 0.0f;
-    ((f32  *)fields[BULLET_FORCE_Y])[i]          = 0.0f;
-    ((f32  *)fields[BULLET_FORCE_Z])[i]          = 0.0f;
-    ((u32  *)fields[BULLET_PHYSICS_BODY_TYPE])[i] = PHYS_BODY_DYNAMIC;
-    ((f32  *)fields[BULLET_MASS])[i]             = BULLET_MASS_KG;
-    ((f32  *)fields[BULLET_RESTITUTION])[i]      = 0.0f;
-    ((f32  *)fields[BULLET_LINEAR_DAMPING])[i]   = 0.0f;
-    ((f32  *)fields[BULLET_SPHERE_RADIUS])[i]    = BULLET_RADIUS;
-    ((f32  *)fields[BULLET_COLLIDER_HALF_X])[i]  = 0.0f;
-    ((f32  *)fields[BULLET_COLLIDER_HALF_Y])[i]  = 0.0f;
-    ((f32  *)fields[BULLET_COLLIDER_HALF_Z])[i]  = 0.0f;
-    ((f32  *)fields[BULLET_LIFETIME])[i]         = 0.0f;
-    ((u32  *)fields[BULLET_MODEL_ID])[i]         = s_sphereModelID;
-    ((b8   *)fields[BULLET_CCD_ENABLED])[i]      = true;
+    ((f32 *)fields[BULLET_LINEAR_VELOCITY_X])[localIdx] = dir.x * speed;
+    ((f32 *)fields[BULLET_LINEAR_VELOCITY_Y])[localIdx] = dir.y * speed;
+    ((f32 *)fields[BULLET_LINEAR_VELOCITY_Z])[localIdx] = dir.z * speed;
+    ((f32 *)fields[BULLET_LIFETIME])[localIdx]          = 0.0f;
 }
 
 void bulletUpdate(Archetype *arch, f32 dt)
