@@ -65,11 +65,6 @@
 #define ADS_LERP_SPEED  10.0f
 #define FOV_LERP_SPEED   8.0f
 
-// Reload tilt animation — gun rotates up during reload, slerps back when done
-#define RELOAD_TILT_ANGLE      1.2f      // radians upward (~69 degrees)
-#define RELOAD_TILT_UP_SPEED   12.0f     // fast snap up on reload start
-#define RELOAD_TILT_DOWN_SPEED 5.0f      // smooth return when reload finishes
-
 // =============================================================================
 // WEAPONS
 // =============================================================================

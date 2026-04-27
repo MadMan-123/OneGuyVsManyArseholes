@@ -14,7 +14,6 @@ DEFINE_ARCHETYPE(Gun, GUN_FIELDS)
 static u32  s_cachedModelIDs[2];
 static b8   s_modelsCached = false;
 static Vec3 s_gunOffset    = {GUN_HIP_X, GUN_HIP_Y, GUN_HIP_Z};
-static f32  s_reloadTiltT  = 0.0f;
 
 void gunInit(Archetype *arch)
 {
@@ -34,7 +33,6 @@ void gunUpdate(Archetype *arch, f32 dt)
     Vec4 *rot      = (Vec4 *)pf[PLAYER_ROTATION];
     u32  *weapon   = (u32  *)pf[PLAYER_WEAPON_TYPE];
     b8   *isAiming = (b8   *)pf[PLAYER_IS_AIMING];
-    f32  *reloadCD = (f32  *)pf[PLAYER_RELOAD_COOLDOWN];
     if (!posX || !posY || !posZ || !rot) return;
 
     void **gf = getArchetypeFields(arch, 0);
@@ -65,23 +63,15 @@ void gunUpdate(Archetype *arch, f32 dt)
     s_gunOffset.z = lerp(s_gunOffset.z, target.z, t);
     Vec3 gunPos = v3Add(eyePos, quatRotateVec3(rot[0], s_gunOffset));
 
-    // Reload tilt: slerp gun rotation up while reloading, back down when finished
-    b8  isReloading = reloadCD && reloadCD[0] > 0.0f;
-    f32 tiltSpeed   = isReloading ? RELOAD_TILT_UP_SPEED : RELOAD_TILT_DOWN_SPEED;
-    s_reloadTiltT   = clamp(s_reloadTiltT + (isReloading ? 1.0f : -1.0f) * tiltSpeed * dt,
-                            0.0f, 1.0f);
-    Vec4 tiltedRot  = quatNormalize(quatMul(rot[0], quatFromAxisAngle(v3Right, RELOAD_TILT_ANGLE)));
-    Vec4 gunRot     = quatSlerp(rot[0], tiltedRot, s_reloadTiltT);
-
     gX[GUN_IDX_PISTOL]   = gunPos.x;
     gY[GUN_IDX_PISTOL]   = gunPos.y;
     gZ[GUN_IDX_PISTOL]   = gunPos.z;
-    gRot[GUN_IDX_PISTOL] = gunRot;
+    gRot[GUN_IDX_PISTOL] = rot[0];
 
     gX[GUN_IDX_AK47]   = gunPos.x;
     gY[GUN_IDX_AK47]   = gunPos.y;
     gZ[GUN_IDX_AK47]   = gunPos.z;
-    gRot[GUN_IDX_AK47] = gunRot;
+    gRot[GUN_IDX_AK47] = rot[0];
 
     if (modelID)
     {
@@ -94,7 +84,6 @@ void gunDestroy(void)
 {
     s_modelsCached = false;
     s_gunOffset    = (Vec3){GUN_HIP_X, GUN_HIP_Y, GUN_HIP_Z};
-    s_reloadTiltT  = 0.0f;
 }
 
 static void gunInitPlugin(void) {}
