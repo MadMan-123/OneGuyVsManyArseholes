@@ -269,6 +269,7 @@ extern "C"
     DAPI Vec3 quatTransform(Vec4 q, Vec3 v);
 
     DAPI Vec4 quatConjugate(const Vec4 q);
+    DAPI Vec4 quatSlerp(Vec4 a, Vec4 b, f32 t);
     DAPI Vec4 quatFromEuler(const Vec3 axis);
     DAPI Vec3 eulerFromQuat(Vec4 quat);
 
@@ -1810,6 +1811,8 @@ extern "C"
         u32 meshCount;        // how many meshes are in the buffer
         u32 materialCount;    // how many materials are in the buffer
         f32 boundingRadius;   // bounding sphere radius at scale=1 (for frustum culling)
+        Vec3 localAabbMin;    // tight local-space AABB at scale=1
+        Vec3 localAabbMax;
     } Model;
     DAPI void draw(Model *model, u32 shader, b8 shouldUpdateMaterials);
 
@@ -2597,8 +2600,8 @@ extern "C"
     #define PSHAPE_BOX    2u
 
     // Callback receives the world-space AABB center, half-extents, bounding radius,
-    // and shape type (PSHAPE_SPHERE or PSHAPE_BOX) for every body in the last step.
-    typedef void (*PhysDebugBodyFn)(Vec3 center, Vec3 half, f32 radius, u32 shape, void *userdata);
+    // shape type (PSHAPE_SPHERE or PSHAPE_BOX), orientation quaternion, and userdata.
+    typedef void (*PhysDebugBodyFn)(Vec3 center, Vec3 half, f32 radius, u32 shape, Vec4 rot, void *userdata);
     DAPI void          physWorldDebugDraw(PhysicsWorld *world, PhysDebugBodyFn fn, void *userdata);
 
     DAPI PhysicsWorld *physWorldCreate(Vec3 gravity, f32 timestep);
@@ -2701,6 +2704,7 @@ extern "C"
     // Shapes
     DAPI void gizmoDrawSphere(Vec3 center, f32 radius, GizmoColor color);
     DAPI void gizmoDrawBox(Vec3 center, Vec3 halfExtents, GizmoColor color);
+    DAPI void gizmoDrawBoxOBB(Vec3 center, Vec3 halfExtents, Vec4 rot, GizmoColor color);
     DAPI void gizmoDrawCylinder(Vec3 center, f32 radius, f32 halfHeight, GizmoColor color);
     DAPI void gizmoDrawAABB(AABB box, GizmoColor color);
     DAPI void gizmoDrawCircle(Vec3 center, Vec3 normal, f32 radius, GizmoColor color);
@@ -2712,6 +2716,7 @@ extern "C"
 
     // Physics debug
     DAPI void gizmoDrawCollider(Collider *col, Vec3 pos, GizmoColor color);
+    DAPI void gizmoDrawColliderRotated(Collider *col, Vec3 pos, Vec4 rot, GizmoColor color);
     DAPI void gizmoDrawContactManifold(const ContactManifold *manifold, GizmoColor color);
 
 #ifdef __cplusplus

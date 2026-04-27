@@ -1,4 +1,5 @@
 #include "Bullet.h"
+#include <math.h>
 
 #define BULLET_LIFETIME_SECS 3.0f
 DEFINE_ARCHETYPE(Bullet, BULLET_FIELDS)
@@ -27,7 +28,21 @@ void bulletSpawn(Vec3 position, Vec3 direction, f32 speed)
     ((f32 *)fields[BULLET_LINEAR_VELOCITY_X])[localIdx] = dir.x * speed;
     ((f32 *)fields[BULLET_LINEAR_VELOCITY_Y])[localIdx] = dir.y * speed;
     ((f32 *)fields[BULLET_LINEAR_VELOCITY_Z])[localIdx] = dir.z * speed;
-    ((f32 *)fields[BULLET_LIFETIME])[localIdx]          = 0.0f;
+
+    // Rotate from +Y (bullet model's default orientation) to travel direction
+    Vec3 fwd     = v3Up;
+    Vec3 axis    = v3Cross(fwd, dir);
+    f32  axisLen = v3Mag(axis);
+    Vec4 lookRot;
+    if (axisLen < 0.0001f)
+        lookRot = (v3Dot(fwd, dir) > 0.0f) ? quatIdentity()
+                                           : quatFromAxisAngle(v3Forward, 3.14159265f);
+    else
+        lookRot = quatFromAxisAngle(v3Norm(axis),
+                                    acosf(clamp(v3Dot(fwd, dir), -1.0f, 1.0f)));
+    ((Vec4 *)fields[BULLET_ROTATION])[localIdx] = lookRot;
+
+    ((f32 *)fields[BULLET_LIFETIME])[localIdx]  = 0.0f;
 }
 
 void bulletUpdate(Archetype *arch, f32 dt)
